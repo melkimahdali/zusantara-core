@@ -26,7 +26,6 @@ import { allowedMethods, resolveHandler, ZenRouter } from "./router.js";
 import { resolveStaticFile, sendStaticFile } from "./static.js";
 import { jobs, MemoryJobStore, SqliteJobStore } from "../backend/jobs.js";
 import { configureMail } from "../backend/mail.js";
-import { modernInternalPath } from "./legacy.js";
 
 /** 404 karena tidak ada route yang cocok (bukan HttpError(404) yang dilempar aplikasi). */
 class RouteNotFoundError extends HttpError {
@@ -173,8 +172,7 @@ export class ZenRuntime {
     const match = this.router.match(ctx.path);
 
     if (!match) {
-      // URL lama /_zentara/* (sebelum ganti nama) tetap dilayani selama satu versi.
-      const internal = modernInternalPath(ctx.path);
+      const internal = ctx.path;
       // Script widget chat pengembangan: hanya ada saat devtools aktif, selain itu 404.
       if (internal.startsWith("/_zusantara/dev/")) {
         if (ctx.method === "GET" && devtoolsClient() && (internal === "/_zusantara/dev/requests" || internal.startsWith("/_zusantara/dev/requests/"))) return requestTraces(ctx, internal);

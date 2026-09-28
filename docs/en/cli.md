@@ -94,4 +94,4 @@ npm install
 
 It rewrites `zentara` and `zentara/...` imports to `zusantara/...`, the dependencies and scripts in `package.json`, `zentara.config.mjs` to `zusantara.config.mjs`, `ZENTARA_*` variables in `.env`, and the `.zentara/` folder to `.zusantara/`. Zusantara AI can run it too (with your approval).
 
-Throughout 0.12.x the old names still work: the `zentara` command, `zentara.config.mjs`, `ZENTARA_*` variables, and `/_zentara/*` URLs. This support is removed in 0.13.
+Up to 0.13.0 the old names still work: the `zentara` command, `zentara.config.mjs`, `ZENTARA_*` variables, and `/_zentara/*` URLs. Since 0.13.1 the old names are no longer read, and the CLI shows a hint to run `migrate:zusantara` when it still finds them. The old job queue (`zentara_jobs`) is still moved automatically so no job is lost.

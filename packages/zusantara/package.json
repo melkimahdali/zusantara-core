@@ -29,8 +29,7 @@
     "node": ">=22"
   },
   "bin": {
-    "zusantara": "dist/cli.js",
-    "zentara": "dist/cli.js"
+    "zusantara": "dist/cli.js"
   },
   "main": "./dist/core/index.js",
   "types": "./dist/core/index.d.ts",

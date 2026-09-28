@@ -94,4 +94,4 @@ npm install
 
 Perintah ini mengganti import `zentara` dan `zentara/...` menjadi `zusantara/...`, dependensi dan script di `package.json`, `zentara.config.mjs` menjadi `zusantara.config.mjs`, variabel `ZENTARA_*` di `.env`, dan folder `.zentara/` menjadi `.zusantara/`. Zusantara AI juga bisa menjalankannya (dengan persetujuan Anda).
 
-Selama 0.12.x nama lama masih diterima: perintah `zentara`, `zentara.config.mjs`, variabel `ZENTARA_*`, dan URL `/_zentara/*`. Dukungan ini dihapus di 0.13.
+Sampai 0.13.0 nama lama masih diterima: perintah `zentara`, `zentara.config.mjs`, variabel `ZENTARA_*`, dan URL `/_zentara/*`. Sejak 0.13.1 nama lama tidak lagi dibaca, dan CLI menampilkan petunjuk untuk menjalankan `migrate:zusantara` bila masih menemukan jejaknya. Antrean job lama (`zentara_jobs`) tetap dipindah otomatis agar tidak ada job yang hilang.

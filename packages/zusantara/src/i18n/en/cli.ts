@@ -110,7 +110,7 @@ Order: ZUSANTARA_AI_ORDER=openai,claude,ollama (other providers follow). Check: 
     nothing: "Nothing to change: this project already uses the Zusantara name.",
     done: (n: number) => `✓ ${n} changes. Run \`npm install\` to install the zusantara package, then \`npm run dev\`.`,
   },
-  legacyMoved: (what: string) => `Zentara is now called Zusantara: local data moved (${what}).`,
+  legacyHint: "This project still uses the old name Zentara, which is no longer read since 0.13.1. Run `npx zusantara migrate:zusantara`, then `npm install`.",
   devtoolsOff: (reason) => `Zusantara AI chat in the browser is off: ${reason}`,
   noTypescript: "TypeScript is not installed in this project. Run: npm install -D typescript",
   buildDone: "✓ Build finished. Run it with: zusantara start",

@@ -1,7 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { randomBytes } from "node:crypto";
 import { format } from "node:util";
-import { modernInternalPath } from "./legacy.js";
 
 /**
  * Jejak per request saat pengembangan (toolbar dev, `zusantara requests`, tool `request_log` Zusantara AI):
@@ -157,7 +156,7 @@ export function finishTrace(trace: RequestTrace, info: { status: number; route?:
   if (info.session) trace.session = sessionPreview(info.session);
   trace.repeated = repeatedQueries(trace.queries);
   // Aset bawaan dan kanal devtools tidak menarik untuk dilihat.
-  if (modernInternalPath(trace.path).startsWith("/_zusantara/")) return;
+  if (trace.path.startsWith("/_zusantara/")) return;
   recent.unshift(trace);
   if (recent.length > MAX_TRACES) recent.length = MAX_TRACES;
 }

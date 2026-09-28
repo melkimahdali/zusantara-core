@@ -109,7 +109,7 @@ Urutan: ZUSANTARA_AI_ORDER=openai,claude,ollama (provider lain menyusul). Cek: n
     nothing: "Tidak ada yang perlu diubah: proyek ini sudah memakai nama Zusantara.",
     done: (n: number) => `✓ ${n} perubahan. Jalankan \`npm install\` untuk memasang paket zusantara, lalu \`npm run dev\`.`,
   },
-  legacyMoved: (what: string) => `Zentara kini bernama Zusantara: data lokal dipindah (${what}).`,
+  legacyHint: "Proyek ini masih memakai nama lama Zentara, yang tidak lagi dibaca sejak 0.13.1. Jalankan `npx zusantara migrate:zusantara`, lalu `npm install`.",
   devtoolsOff: (reason: string) => `Chat Zusantara AI di browser tidak aktif: ${reason}`,
   noTypescript: "TypeScript belum dipasang di proyek ini. Jalankan: npm install -D typescript",
   buildDone: "✓ Build selesai. Jalankan dengan: zusantara start",

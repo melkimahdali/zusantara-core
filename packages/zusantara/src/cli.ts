@@ -27,7 +27,7 @@ import { findLocalCli } from "./process.js";
 import { ProviderUnavailableError } from "./ai/types.js";
 import { defaultAppDir, loadConfigFile, resolveConfig, type UserConfig } from "./core/config.js";
 import { formatUiObject, writeConfigUi } from "./core/config-edit.js";
-import { applyLegacyEnv, LEGACY_CONFIG_FILES, migrateLegacyDirs, migrateProject } from "./core/legacy.js";
+import { hasLegacyTraces, migrateProject } from "./core/legacy.js";
 import { CATALOG_GROUPS, catalogDetail, catalogList, exampleList, findCatalogEntry, findExample, similarEntries, UI_CATALOG, UI_EXAMPLES } from "./ui/catalog.js";
 import { ACCENT_PRESETS, DEFAULT_THEME, resolveUiTheme, type UiTheme, type UiThemeConfig } from "./ui/theme.js";
 import type { DbCommandResult } from "./db/commands.js";
@@ -362,7 +362,6 @@ export function isNaturalLanguage(positional: readonly string[]): boolean {
 function loadDotEnv(cwd: string): void {
   const file = path.join(cwd, ".env");
   if (fs.existsSync(file)) process.loadEnvFile(file);
-  applyLegacyEnv();
 }
 
 async function loadAiConfig(io: CliIO, flags: ParsedArgs["flags"]) {
@@ -582,7 +581,7 @@ function serveEntry(): string {
 
 /** Argumen tsx watch: pantau juga seluruh folder aplikasi (file route baru) dan .env. */
 export function devWatchArgs(cwd: string, appDir: string, entry: string): string[] {
-  return ["watch", "--clear-screen=false", "--include", appDir, "--include", path.join(cwd, ".env"), "--include", path.join(cwd, "zusantara.config.mjs"), "--include", path.join(cwd, "zentara.config.mjs"), entry];
+  return ["watch", "--clear-screen=false", "--include", appDir, "--include", path.join(cwd, ".env"), "--include", path.join(cwd, "zusantara.config.mjs"), entry];
 }
 
 async function devServer(args: ParsedArgs, io: CliIO): Promise<number> {
@@ -837,7 +836,7 @@ async function themeCommand(args: ParsedArgs, io: CliIO): Promise<number> {
     io.err((err as Error).message);
     return 1;
   }
-  const file = ["zusantara.config.mjs", "zusantara.config.js", ...LEGACY_CONFIG_FILES].find((f) => fs.existsSync(path.join(io.cwd, f))) ?? "zusantara.config.mjs";
+  const file = ["zusantara.config.mjs", "zusantara.config.js"].find((f) => fs.existsSync(path.join(io.cwd, f))) ?? "zusantara.config.mjs";
   if (!reset && Object.keys(changes).length === 0) {
     if (args.flags.json) {
       io.out(JSON.stringify({ config: current, theme: resolved, accents: Object.keys(ACCENT_PRESETS) }, null, 2));
@@ -939,8 +938,7 @@ function version(): string {
 }
 
 export async function run(argv: readonly string[], io: CliIO): Promise<number> {
-  applyLegacyEnv();
-  for (const moved of migrateLegacyDirs(io.cwd)) io.err(t().cli.legacyMoved(moved));
+  if (hasLegacyTraces(io.cwd) && argv[0] !== "migrate:zusantara") io.err(t().cli.legacyHint);
   // Salinan env sebelum .env dimuat ke proses ini: dipakai untuk server dev yang dijalankan CLI.
   const serverEnv = { ...process.env };
   const args = parseArgs(argv);

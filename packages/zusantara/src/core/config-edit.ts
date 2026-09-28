@@ -1,7 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { UiThemeConfig } from "../ui/theme.js";
-import { LEGACY_CONFIG_FILES } from "./legacy.js";
 
 /**
  * Ubah `ui` di zusantara.config.mjs tanpa menyentuh bagian lain file (dipakai `zusantara theme`). Hanya
@@ -13,7 +12,7 @@ export type ConfigEditResult =
   | { ok: true; file: string; created: boolean; changed: boolean }
   | { ok: false; file: string; reason: "multiline" | "noExport" };
 
-const CONFIG_FILES = ["zusantara.config.mjs", "zusantara.config.js", ...LEGACY_CONFIG_FILES];
+const CONFIG_FILES = ["zusantara.config.mjs", "zusantara.config.js"];
 const SINGLE_LINE = /^([ \t]*)ui[ \t]*:[ \t]*\{[^{}\n]*\}[ \t]*,?[ \t]*(\/\/[^\n]*)?\r?\n?/m;
 const ANY_UI = /^[ \t]*ui[ \t]*:/m;
 const EXPORT_OPEN = /export[ \t]+default[ \t]+(?:defineConfig[ \t]*\([ \t]*)?\{[ \t]*\r?\n/;

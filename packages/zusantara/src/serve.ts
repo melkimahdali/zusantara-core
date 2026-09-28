@@ -4,7 +4,6 @@ import http from "node:http";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { loadConfigFile, resolveConfig, type UserConfig } from "./core/config.js";
-import { applyLegacyEnv } from "./core/legacy.js";
 import { renderErrorPage } from "./core/devpage/error.js";
 import { setAppInfo } from "./core/devpage/info.js";
 import { ZenRuntime } from "./core/runtime.js";
@@ -50,7 +49,6 @@ export async function serve(options: ServeOptions = {}): Promise<ZenRuntime | un
   // Muat .env bila ada; variabel yang sudah diatur di environment tetap didahulukan.
   const envFile = path.join(cwd, ".env");
   if (fs.existsSync(envFile)) process.loadEnvFile(envFile);
-  applyLegacyEnv();
   if (options.appDir) process.env.ZUSANTARA_APP_DIR = path.resolve(cwd, options.appDir);
 
   let user: UserConfig = {};

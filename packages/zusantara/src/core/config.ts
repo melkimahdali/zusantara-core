@@ -2,7 +2,6 @@ import fs from "node:fs";
 import { readSettings, resolveLocale, t, type Locale } from "../i18n/index.js";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { applyLegacyEnv, LEGACY_CONFIG_FILES } from "./legacy.js";
 import { isLogLevel, type LogLevel } from "./logger.js";
 import type { Middleware } from "./middleware.js";
 import type { ZenPlugin } from "./plugin.js";
@@ -97,7 +96,7 @@ export function defaultAppDir(cwd = process.cwd(), env: NodeJS.ProcessEnv = proc
   const src = path.join(cwd, "src", "app");
   return fs.existsSync(src) ? src : path.join(cwd, "dist", "app");
 }
-const CONFIG_FILES = ["zusantara.config.mjs", "zusantara.config.js", ...LEGACY_CONFIG_FILES];
+const CONFIG_FILES = ["zusantara.config.mjs", "zusantara.config.js"];
 
 function parsePort(value: unknown): number {
   const port = typeof value === "string" && value.trim() !== "" ? Number(value) : value;
@@ -109,7 +108,6 @@ function parsePort(value: unknown): number {
 
 /** Gabungkan config pengguna, variabel lingkungan, dan default. Env (PORT, HOST, NODE_ENV, LOG_LEVEL) menang. */
 export function resolveConfig(user: UserConfig = {}, env: NodeJS.ProcessEnv = process.env, cwd = process.cwd()): ZenConfig {
-  applyLegacyEnv(env);
   const envName = env.NODE_ENV || user.env || "development";
   const logLevel = env.LOG_LEVEL ?? user.logLevel ?? (envName === "test" ? "warn" : "info");
   if (!isLogLevel(logLevel)) throw new Error(`Invalid logLevel: ${logLevel}`);
@@ -165,7 +163,7 @@ export function resolveConfig(user: UserConfig = {}, env: NodeJS.ProcessEnv = pr
   };
 }
 
-/** Muat `zusantara.config.mjs` / `.js` dari folder proyek bila ada (nama lama `zentara.config.*` masih dibaca). */
+/** Muat `zusantara.config.mjs` / `.js` dari folder proyek bila ada. */
 export async function loadConfigFile(cwd = process.cwd()): Promise<UserConfig> {
   for (const name of CONFIG_FILES) {
     const file = path.join(cwd, name);
