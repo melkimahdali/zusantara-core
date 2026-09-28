@@ -26,19 +26,19 @@ Zusantara is a general-purpose web framework, not a framework for one kind of ap
 | 9 | 0.10 | Front-end: the `zusantara/ui` kit, built-in pages, and the Ink-based CLI |
 | 10 | 0.12 | [English support](bahasa.html): CLI, Zusantara AI, built-in pages, UI kit, templates, and docs in `id` and `en` |
 | 11 | 0.12 | Back-end: [jobs & schedules](jobs.html), [email](email.html), [file uploads](upload.html), [cache](cache.html) |
-
-Stages 10 and 11 shipped together in 0.12.
-
-## Next
-
-| Stage | Version | Contents |
-|---|---|---|
 | 12 | 0.12.5 | Zusantara AI chat on every page during development, and an AI that can see the page and check its layout on desktop and mobile (`view_page`) |
 | 12b | 0.12.6 | Layout foundations and complete forms: layout, Select, Checkbox, Radio, Switch, file upload, theme config, and a component catalog |
 | 12c | 0.12.7 | Navigation, dialogs, notifications, and data display: Navbar, Tabs, Pagination, Dialog, Toast, Accordion, Timeline, Calendar, 403/404/500 pages |
 | 12d | 0.12.8 | Public pages and ready-made patterns: Hero, Pricing, Gallery, FAQ, Testimonial, ProductCard, cart, and full example pages |
 | 12e | 0.12.9 | Developer tools: per-request toolbar (queries, N+1), inspect mode, page score, tablet/dark/en variants, screenshots, recorded steps, voice input |
-| 13 | 0.13 | Admin panel foundations with [htmx](https://htmx.org): re-runnable CRUD from the schema, sort/search/filter, permissions, admin dashboard, and `zusantara describe --json` |
+| 13 | 0.13 | [Admin panel](admin.html) foundations with [htmx](https://htmx.org): re-runnable CRUD from the schema, sort/search/filter, permissions, admin dashboard, and `zusantara describe --json` |
+
+Stages 10 and 11 shipped together in 0.12. Zentara was renamed Zusantara and the license became MIT in 0.12.10.
+
+## Next
+
+| Stage | Version | Contents |
+|---|---|---|
 | 13b | 0.13.1 | Relations, content, and workflows: many-to-many, CSV/Excel, audit log, revisions, draft and publish, SEO, media, approvals, automations, schema editor |
 | 13c | 0.13.2 | Calendar/kanban/spreadsheet views, saved views, per-column and per-row permissions, user management, multi-tenant, API and webhooks, UU PDP |
 | 13d | 0.13.3 | Content and business templates: business, portfolio, blog, news, government, service provider, static, public |
@@ -142,7 +142,7 @@ Compared with Django Debug Toolbar, Laravel Telescope, Lighthouse, Sentry, and t
 
 Compared with Django Admin, Laravel Filament/Nova, Rails Avo, Airtable/NocoDB, Directus/Strapi, Retool/Metabase, Supabase Studio, and Odoo/Salesforce. The admin panel has to fit any kind of website, not only shops.
 
-#### Stage 13 · 0.13: data and admin panel foundations
+#### Stage 13 · 0.13: data and admin panel foundations (done)
 
 - htmx joins the core, with an `hx` prop in the UI kit and badged menu items. The admin panel uses the components from stages 12b to 12d, plus components that need the server: a searchable `Combobox` and sortable tables with inline editing.
 - `zusantara make:admin` builds admin pages from the database schema, and **can be run again** after the schema changes without overwriting code you edited (only marked blocks are updated).

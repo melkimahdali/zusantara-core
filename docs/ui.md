@@ -167,6 +167,42 @@ h(Drawer, { id: "filter", title: "Filter" }, ...),
 
 `Dialog` dengan `open: true` langsung terbuka saat halaman dimuat, misalnya bila formulir di dalamnya punya error.
 
+## htmx
+
+htmx sudah ada di Zusantara (versi 2, lisensi 0BSD, disajikan dari `/_zusantara/htmx.js`). `page()` memuatnya otomatis bila halaman memakai atribut `hx-*`, jadi Anda tidak perlu menambah tag script. Hampir semua komponen interaktif menerima prop `hx`:
+
+```ts
+h(Search, { action: "/produk", value: q, hx: { target: "#hasil" } }),         // hasil diperbarui saat mengetik
+h(Button, { href: `/produk?page=${page + 1}`, hx: { target: "#daftar", swap: "beforeend" } }, "Muat lagi"),
+h(PostButton, { action: `/produk/${p.id}/hapus`, hx: { target: "closest tr", swap: "outerHTML" } }, "Hapus"),
+h(Form, { action: "/produk", hx: { post: "/produk", target: "this", swap: "outerHTML" } }, ...),
+h(Tabs, { items, active, hx: { target: "#isi", pushUrl: true } }),
+```
+
+Opsi `hx`: `get`, `post`, `put`, `patch`, `delete`, `target`, `swap`, `trigger`, `pushUrl`, `select`, `indicator`, `confirm`, `include`, `vals`, `boost`, dan `disabledElt`. Untuk tautan dan tombol ber-`href`, `get` otomatis sama dengan `href`, jadi halaman tetap bekerja tanpa JavaScript. Respons 422 ikut ditukar, sehingga formulir dengan pesan error bisa dikirim ulang sebagai potongan HTML.
+
+Di handler, bedakan permintaan htmx dari kunjungan biasa:
+
+```ts
+import { flash, fragment, hxRedirect, htmxTarget, isHtmx, renderToString } from "zusantara";
+
+export async function GET(ctx: ZenContext) {
+  const rows = await cariProduk(ctx.query.q);
+  if (htmxTarget(ctx) === "hasil") return fragment(renderToString(h(TabelProduk, { rows })));
+  return appPage(ctx, { title: "Produk", active: "/produk" }, h(Search, { action: "/produk", hx: { target: "#hasil" } }), h("div", { id: "hasil" }, h(TabelProduk, { rows })));
+}
+
+export async function POST(ctx: ZenContext) {
+  // ...simpan
+  flash(ctx, "Produk tersimpan.");
+  return hxRedirect(ctx, "/produk"); // htmx: pindah tanpa muat ulang penuh; tanpa htmx: redirect 303
+}
+```
+
+`fragment()` menambah `Vary: HX-Request` agar cache tidak mencampur potongan dengan halaman utuh, dan `hxHeaders({ trigger, pushUrl, retarget, reswap, refresh })` membuat header respons htmx lainnya.
+
+**Komponen untuk data.** `DataTable` adalah tabel dengan tautan urut di judul kolom (`aria-sort`) dan tampilan kartu di HP. `InlineEdit` mengubah satu nilai langsung di sel tabel (teks, angka, tanggal, pilihan, atau switch) dan menyimpannya saat nilai berubah. `Combobox` adalah pilihan dengan pencarian di server, untuk daftar yang terlalu panjang bagi `Select`. Ketiganya dipakai [panel admin](admin.html), dan bisa dipakai di halaman Anda sendiri.
+
 ## Pesan setelah redirect (flash)
 
 `flash(ctx, pesan)` menyimpan pesan untuk ditampilkan satu kali di halaman berikutnya, dan `takeFlash(ctx)` mengambilnya. Pesan disimpan di session bila middleware `session()` terpasang, bila tidak di cookie pendek `zen_flash`:
@@ -266,6 +302,6 @@ Proyek baru dari `npm create zusantara` (template **api**) langsung punya:
 | `/dashboard` | ringkasan (catatan, aktivitas minggu ini, pengguna), catatan terbaru, dan ide untuk dibangun berikutnya |
 | `/notes` | contoh fitur milik user: tulis, cari, dan daftar catatan (setiap user hanya melihat catatannya sendiri) |
 | `/notes/:id` | ubah dan hapus catatan |
-| `/admin/users` | daftar pengguna dan perannya (khusus admin) |
+| `/admin` | [panel admin](admin.html) untuk pengguna dan catatan: dasbor, cari, filter, ubah langsung (khusus admin) |
 
 Semua halaman ini ada di `src/app/routes/` dan boleh diubah sesuka Anda. `src/app/lib/ui.ts` berisi `appPage()` (kerangka dengan navigasi atas) dan `APP_NAME`. Zusantara AI juga memakai kit ini saat Anda meminta halaman baru, mis. *"buatkan halaman jadwal booking untuk user yang login"*.

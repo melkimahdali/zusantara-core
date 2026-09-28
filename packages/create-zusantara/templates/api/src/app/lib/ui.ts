@@ -1,17 +1,18 @@
 import { h, type Child, type ZenContext } from "zusantara";
 import { AppShell, page, type NavItem } from "zusantara/ui";
+import { adminNav } from "../admin/index.js";
 import type { User } from "../db/schema.js";
 
 /** Nama aplikasi di judul halaman dan navigasi atas. */
 export const APP_NAME = "Zusantara App";
 
-/** Menu navigasi atas; bagian "Kelola" hanya untuk admin. Tambahkan halaman baru Anda di sini. */
+/** Menu navigasi atas; menu Admin hanya muncul bagi yang punya akses. Tambahkan halaman baru Anda di sini. */
 function navFor(user: User): NavItem[] {
   const nav: NavItem[] = [
     { href: "/dashboard", label: "Dasbor" },
     { href: "/notes", label: "Catatan" },
   ];
-  if (user.role === "admin") nav.push({ href: "/admin/users", label: "Pengguna", section: "Kelola" });
+  nav.push(...adminNav(user));
   return nav;
 }
 

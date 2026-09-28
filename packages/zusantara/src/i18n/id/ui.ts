@@ -57,6 +57,11 @@ export const ui = {
     discount: "Potongan",
     total: "Total",
   },
+  sortBy: (label: string, asc: boolean) => `Urutkan ${label} ${asc ? "dari kecil ke besar" : "dari besar ke kecil"}`,
+  save: "Simpan",
+  comboSearch: (label: string) => `Cari ${label.toLowerCase()}`,
+  comboEmpty: "Tidak ada yang cocok.",
+  comboNone: "Tidak ada",
   theme: {
     invalidObject: "ui di zusantara.config.mjs harus berupa objek, mis. ui: { accent: \"blue\" }",
     invalid: (key: string, value: string, allowed: string) => `Nilai ui.${key} tidak dikenal: ${value}. Pilihan: ${allowed}`,

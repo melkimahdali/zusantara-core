@@ -436,11 +436,11 @@ export const agentTools: AgentTool[] = [
     spec: {
       name: "zusantara",
       description:
-        "Run a Zusantara CLI command in the project, using the project's own zusantara install: routes (list routes), jobs (list background jobs, schedules, and queue), jobs:run <name> [--data <json>] (run one job now), make:route <path> [--methods GET,POST], make:middleware <name>, make:job <name> [--schedule \"<cron>\"], build, migrate:zusantara (move a project made with the old name Zentara to Zusantara: imports, package.json, config, .env, .zentara folder; run npm install afterwards), theme (show the UI kit theme) or theme --accent <color> [--radius none|sm|md|lg] [--font jakarta|system|serif|mono] [--mode auto|light|dark] [--reset] (change it in zusantara.config.mjs; colors: teal, blue, sky, cyan, indigo, violet, purple, pink, rose, red, orange, amber, gold, brown, green, emerald, slate, or #rrggbb). Use the database tool for db:*; the dev server is controlled by the developer.",
+        "Run a Zusantara CLI command in the project, using the project's own zusantara install: routes (list routes), jobs (list background jobs, schedules, and queue), jobs:run <name> [--data <json>] (run one job now), make:route <path> [--methods GET,POST], make:middleware <name>, make:job <name> [--schedule \"<cron>\"], make:admin <table...> | --all [--force] (admin panel pages at /admin from the Drizzle schema, plus tests; re-running only updates the marked zusantara:generated blocks, a block edited by hand is skipped unless --force), describe --json (app manifest: routes, tables and columns without secret columns, admin resources and access, jobs, plugins, index suggestions), build, migrate:zusantara (move a project made with the old name Zentara to Zusantara: imports, package.json, config, .env, .zentara folder; run npm install afterwards), theme (show the UI kit theme) or theme --accent <color> [--radius none|sm|md|lg] [--font jakarta|system|serif|mono] [--mode auto|light|dark] [--reset] (change it in zusantara.config.mjs; colors: teal, blue, sky, cyan, indigo, violet, purple, pink, rose, red, orange, amber, gold, brown, green, emerald, slate, or #rrggbb). Use the database tool for db:*; the dev server is controlled by the developer.",
       inputSchema: {
         type: "object",
         properties: {
-          command: { type: "string", enum: ["routes", "jobs", "jobs:run", "make:route", "make:middleware", "make:job", "build", "theme", "migrate:zusantara"] },
+          command: { type: "string", enum: ["routes", "jobs", "jobs:run", "make:route", "make:middleware", "make:job", "make:admin", "describe", "build", "theme", "migrate:zusantara"] },
           args: { type: "array", items: { type: "string" }, description: "Extra arguments, e.g. [\"reports/daily\", \"--schedule\", \"0 7 * * *\"]" },
         },
         required: ["command"],
@@ -449,7 +449,7 @@ export const agentTools: AgentTool[] = [
     },
     async run(input, ctx) {
       const command = str(input, "command")!;
-      const risks: Record<string, Risk> = { routes: "read", jobs: "read", "jobs:run": "critical", "make:route": "write", "make:middleware": "write", "make:job": "write", build: "write", theme: "write", "migrate:zusantara": "critical" };
+      const risks: Record<string, Risk> = { routes: "read", jobs: "read", "jobs:run": "critical", "make:route": "write", "make:middleware": "write", "make:job": "write", "make:admin": "write", describe: "read", build: "write", theme: "write", "migrate:zusantara": "critical" };
       const args0 = Array.isArray(input.args) ? input.args.map(String) : [];
       // `theme` tanpa argumen hanya membaca tema.
       const risk = command === "theme" && args0.length === 0 ? "read" : risks[command];
@@ -471,10 +471,11 @@ export const agentTools: AgentTool[] = [
         const changed = migrateProject(ctx.root, ZUSANTARA_VERSION);
         return `${t().ai.tools.ok}: zusantara ${line}\n${changed.length ? changed.join("\n") : t().cli.migrateName.nothing}`;
       }
-      // make:* membuat file di src/: foto dulu isinya agar `zusantara undo` bisa mengembalikannya.
-      const src = path.join(ctx.root, "src");
+      // make:* membuat file di src/ (make:admin juga tes di test/): foto dulu isinya agar `zusantara undo` bisa mengembalikannya.
+      const dirs = [path.join(ctx.root, "src"), ...(command === "make:admin" ? [path.join(ctx.root, "test")] : [])];
+      const watched = () => dirs.flatMap((d) => listFiles(ctx.root, d, 5_000, true));
       const snapshot = new Map<string, string>();
-      if (command.startsWith("make:")) for (const f of listFiles(ctx.root, src, 5_000, true)) snapshot.set(f, fs.readFileSync(path.join(ctx.root, f), "utf8"));
+      if (command.startsWith("make:")) for (const f of watched()) snapshot.set(f, fs.readFileSync(path.join(ctx.root, f), "utf8"));
       // theme mengubah zusantara.config.mjs: foto dulu isinya (atau catat bahwa belum ada) untuk `zusantara undo`.
       const configFile = "zusantara.config.mjs";
       const configBefore = command === "theme" && risk !== "read" ? (fs.existsSync(path.join(ctx.root, configFile)) ? fs.readFileSync(path.join(ctx.root, configFile), "utf8") : null) : undefined;
@@ -484,13 +485,14 @@ export const agentTools: AgentTool[] = [
         if (after !== configBefore) ctx.journal.recordExternal(configFile, configBefore);
       }
       if (command.startsWith("make:")) {
-        for (const f of listFiles(ctx.root, src, 5_000, true)) {
+        for (const f of watched()) {
           const before = snapshot.get(f);
           if (before === undefined) ctx.journal.recordExternal(f, null);
           else if (before !== fs.readFileSync(path.join(ctx.root, f), "utf8")) ctx.journal.recordExternal(f, before);
         }
       }
-      return `${result.ok ? t().ai.tools.ok : t().ai.tools.failed}: zusantara ${line}\n${truncate(redactSecrets(result.output, secretValues(ctx.root)), 3000)}`;
+      // Manifest describe adalah konteks kerja AI, jadi batasnya lebih longgar.
+      return `${result.ok ? t().ai.tools.ok : t().ai.tools.failed}: zusantara ${line}\n${truncate(redactSecrets(result.output, secretValues(ctx.root)), command === "describe" ? 16_000 : 3000)}`;
     },
   },
   {

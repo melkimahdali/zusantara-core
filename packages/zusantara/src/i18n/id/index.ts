@@ -1,3 +1,4 @@
+import { admin } from "./admin.js";
 import { ai } from "./ai.js";
 import { backend } from "./backend.js";
 import { cli } from "./cli.js";
@@ -8,6 +9,6 @@ import { tui } from "./tui.js";
 import { ui } from "./ui.js";
 
 /** Katalog Bahasa Indonesia: sumber bentuk (tipe) semua katalog lain. */
-export const id = { cli, host, ai, tui, dev, core, ui, backend };
+export const id = { cli, host, ai, tui, dev, core, ui, backend, admin };
 
 export type Messages = typeof id;

@@ -1,6 +1,6 @@
 {
   "name": "zusantara",
-  "version": "0.12.10",
+  "version": "0.13.0",
   "description": "Framework web TypeScript AI-driven asal Nusantara: routing berbasis file, auth, database, dan AI yang membangun aplikasi dari bahasa sehari-hari.",
   "keywords": [
     "framework",
@@ -50,6 +50,10 @@
     "./db": {
       "types": "./dist/db/index.d.ts",
       "default": "./dist/db/index.js"
+    },
+    "./admin": {
+      "types": "./dist/admin/index.d.ts",
+      "default": "./dist/admin/index.js"
     },
     "./package.json": "./package.json"
   },

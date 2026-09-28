@@ -30,6 +30,8 @@ npm install -g zusantara
 | `zusantara make:route <path> [--methods GET,POST]` | create a route file, e.g. `api/events/[id]` |
 | `zusantara make:middleware <name>` | create a middleware file |
 | `zusantara make:job <name> [--schedule "0 7 * * *"]` | create a [job](jobs.html) file, optionally with a cron schedule |
+| `zusantara make:admin <table...> [--all] [--force]` | create or refresh the [admin panel](admin.html) from the database schema, with tests |
+| `zusantara describe [--json]` | app manifest: routes, tables and columns (no secret columns), admin panel, jobs, plugins, and index suggestions |
 | `zusantara jobs [--json]` | list jobs, schedules, next runs, and queue counts |
 | `zusantara jobs:run <name> [--data <json>]` | run one job now, without the queue |
 | `zusantara db:generate` · `db:migrate` · `db:seed` | database (Drizzle) |

@@ -15,7 +15,7 @@ describe("kit UI (zusantara/ui)", () => {
     assert.match(html, /<body class="zu">/);
     assert.match(html, /<a class="zu-skip" href="#konten">Lewati ke konten<\/a>/);
     assert.match(html, /<link rel="preload" href="\/_zusantara\/fonts\/plus-jakarta-sans-latin\.woff2" as="font" type="font\/woff2" crossorigin="anonymous">/);
-    assert.match(html, /<script>document\.addEventListener\("submit"/);
+    assert.match(html, /<script>\(function\(\)\{if\(window\.zuInit\)return;.*document\.addEventListener\("submit"/);
     assert.ok(!page({ title: "t", script: false }).includes("<script>"));
   });
 

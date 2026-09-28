@@ -114,12 +114,12 @@ body.zu::before{content:"";position:fixed;inset:0;z-index:var(--zu-z-grain);poin
 /* Angka ringkasan: satu strip bersekat, bukan deretan kartu kembar */
 .zu-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));background:var(--zu-surface);border:1px solid var(--zu-border);border-radius:var(--zu-r-lg);box-shadow:var(--zu-shadow);overflow:hidden}
 .zu-stat{display:flex;flex-direction:column;gap:6px;padding:20px 24px 22px;min-width:0}
-.zu-stats > .zu-stat + .zu-stat{border-left:1px solid var(--zu-border)}
+/* Garis pemisah lewat bayangan: benar di baris mana pun kotak berakhir (grid auto-fit). */
+.zu-stats > *{box-shadow:-1px -1px 0 var(--zu-border)}
 .zu-grid > .zu-stat{background:var(--zu-surface);border:1px solid var(--zu-border);border-radius:var(--zu-r-lg);box-shadow:var(--zu-shadow)}
 .zu-stat span{font-size:13px;color:var(--zu-muted);font-weight:500}
 .zu-stat b{font-size:30px;font-weight:650;letter-spacing:-.03em;line-height:1.05;font-variant-numeric:tabular-nums}
 .zu-stat small{font-size:13px;color:var(--zu-muted)}
-@media (max-width:640px){.zu-stats > .zu-stat + .zu-stat{border-left:0;border-top:1px solid var(--zu-border)}}
 
 /* Formulir */
 .zu-form{display:flex;flex-direction:column;gap:16px}
@@ -630,6 +630,65 @@ body.zu:has(.zu-bottomnav){padding-bottom:calc(64px + env(safe-area-inset-bottom
 .zu-gallery-demo .zu-toasts,.zu-gallery-demo .zu-bottomnav{position:static;display:flex}
 .zu-gallery-demo .zu-toasts{max-width:none}
 .zu-gallery-demo .zu-navbar{position:static}.zu-gallery-demo .zu-footer{margin-top:0}.zu-gallery-demo .zu-status{min-height:0;padding:8px 0;place-items:start}
+
+/* Pembaca layar saja */
+.zu-sr{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+/* Tanda di menu AppShell */
+.zu-nav-badge{display:inline-grid;place-items:center;min-width:20px;height:18px;margin-left:6px;padding:0 6px;border-radius:999px;background:var(--zu-accent-soft);color:var(--zu-accent-hover);font-size:11.5px;font-weight:650;font-variant-numeric:tabular-nums}
+/* htmx: penanda permintaan berjalan dan isi yang sedang ditukar */
+.htmx-indicator{opacity:0;transition:opacity .15s var(--zu-ease)}
+.htmx-request .htmx-indicator,.htmx-request.htmx-indicator{opacity:1}
+.htmx-request.zu-results,.htmx-request .zu-results{opacity:.6;transition:opacity .15s var(--zu-ease)}
+/* DataTable: urutkan kolom, kartu di ponsel */
+.zu-sort{display:inline-flex;align-items:center;gap:6px;color:inherit;font:inherit;text-decoration:none}
+.zu-sort:hover{color:var(--zu-text);text-decoration:none}
+.zu-sort.asc,.zu-sort.desc{color:var(--zu-text)}
+.zu-sort-icon{font-size:11px;color:var(--zu-faint)}
+.zu-sort.asc .zu-sort-icon,.zu-sort.desc .zu-sort-icon{color:var(--zu-accent)}
+.zu-datatable th.num .zu-sort{flex-direction:row-reverse}
+@media (max-width:640px){
+.zu-table-wrap:has(.zu-datatable){overflow:visible}
+.zu-datatable,.zu-datatable tbody,.zu-datatable tr,.zu-datatable td{display:block;width:100%}
+.zu-datatable thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+.zu-datatable tbody tr{padding:12px 16px;border-bottom:1px solid var(--zu-border)}
+.zu-datatable tbody tr:last-child{border-bottom:0}
+.zu-datatable td{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:5px 0;border:0;text-align:right;min-height:30px}
+.zu-datatable td[data-label]::before{content:attr(data-label);color:var(--zu-muted);font-size:13px;font-weight:500;text-align:left;flex:none;max-width:45%}
+.zu-datatable td.end{justify-content:flex-end;width:100%;padding-top:8px}
+.zu-datatable td:first-child{font-weight:600}}
+/* InlineEdit: nilai sel yang bisa diubah langsung */
+.zu-inline-edit{display:inline-flex;align-items:center;gap:6px;margin:0;flex-wrap:wrap}
+.zu-inline-edit .zu-input{height:32px;font-size:14px;padding:0 8px;min-width:0;width:auto;max-width:180px}
+.zu-inline-edit input[type=number]{width:96px}
+.zu-inline-edit .zu-select{padding-right:30px;background-position:right 9px center;min-width:96px}
+.zu-inline-edit .zu-error{flex-basis:100%;font-size:12.5px}
+.zu-inline-edit.invalid .zu-input{border-color:var(--zu-danger)}
+.zu-inline-edit.htmx-request{opacity:.6}
+/* Combobox: cari lalu pilih satu */
+.zu-combobox{display:grid;gap:8px}
+.zu-combo-list{display:grid;gap:2px;max-height:240px;overflow:auto;padding:4px;border:1px solid var(--zu-border);border-radius:var(--zu-r-md);background:var(--zu-surface)}
+.zu-combo-list[aria-invalid=true]{border-color:var(--zu-danger)}
+.zu-combo-item{display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:var(--zu-r-sm);cursor:pointer;font-size:14.5px;line-height:1.4}
+.zu-combo-item:hover{background:var(--zu-surface-2)}
+.zu-combo-item:has(input:checked){background:var(--zu-accent-soft)}
+.zu-combo-item input{margin-top:3px;accent-color:var(--zu-accent)}
+.zu-combo-item span{display:grid;gap:1px;min-width:0}
+.zu-combo-item small{color:var(--zu-muted);font-size:12.5px;overflow:hidden;text-overflow:ellipsis}
+.zu-combo-item.none{color:var(--zu-muted)}
+.zu-combo-empty{margin:0;padding:8px 10px;color:var(--zu-muted);font-size:14px}
+
+/* Panel admin (zusantara/admin) */
+.zu-admin-filters{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px 16px;align-items:end;margin:0}
+.zu-admin-filters > .zu-field:has(input[type=search]){grid-column:1/-1}
+.zu-admin-filter-actions{display:flex;align-items:center;gap:12px;min-height:40px}
+.zu-admin-count{margin:0 0 8px;color:var(--zu-muted);font-size:14px}
+.zu-admin-row-actions{display:flex;justify-content:flex-end;gap:4px;white-space:nowrap}
+.zu-admin-row-actions form{margin:0}
+.zu-admin-thumb{width:40px;height:40px;object-fit:cover;border-radius:var(--zu-r-sm);border:1px solid var(--zu-border);display:block}
+.zu-admin-stat{color:inherit;text-decoration:none;display:flex;flex-direction:column;min-width:0}
+.zu-admin-stat:hover{background:var(--zu-surface-2)}
+.zu-admin-stat:focus-visible{outline:2px solid var(--zu-accent);outline-offset:-2px}
+.zu-card.flush > .zu-list{padding:4px 24px 8px}
 
 /* Gerak: hanya bila pengguna tidak meminta gerak dikurangi */
 @media (prefers-reduced-motion:no-preference){

@@ -1,6 +1,6 @@
-import { redirect } from "zusantara";
-import { requireAdminPage } from "../../lib/auth.js";
+import { admin } from "../../admin/index.js";
+import { requireUserPage } from "../../lib/auth.js";
 
-export const middleware = [requireAdminPage];
-
-export const GET = () => redirect("/admin/users", 303);
+// Dasbor admin. Hak akses dicek per tabel di src/app/admin/<tabel>.ts.
+export const middleware = [requireUserPage];
+export const GET = admin.dashboard;

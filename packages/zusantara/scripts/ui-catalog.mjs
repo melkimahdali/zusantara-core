@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const SOURCES = ["src/ui/layout.ts", "src/ui/forms.ts", "src/ui/index.ts", "src/ui/nav.ts", "src/ui/overlay.ts", "src/ui/feedback.ts", "src/ui/data.ts", "src/ui/status.ts", "src/ui/public.ts", "src/ui/commerce.ts", "src/core/flash.ts"];
+const SOURCES = ["src/ui/layout.ts", "src/ui/forms.ts", "src/ui/index.ts", "src/ui/nav.ts", "src/ui/overlay.ts", "src/ui/feedback.ts", "src/ui/data.ts", "src/ui/table.ts", "src/ui/status.ts", "src/ui/public.ts", "src/ui/commerce.ts", "src/core/flash.ts"];
 export const OUTPUT = "src/ui/catalog.gen.ts";
 /** Contoh halaman utuh (src/ui/examples/{id,en}/<nama>.ts), urut seperti di katalog. */
 export const EXAMPLES = ["landing", "profile", "store", "booking", "dashboard"];

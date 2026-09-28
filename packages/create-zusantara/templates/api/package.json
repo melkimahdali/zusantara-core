@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "drizzle-orm": "^0.45.3",
-    "zusantara": "^0.12.10",
+    "zusantara": "^0.13.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {

@@ -1,5 +1,6 @@
 import { h, type Child } from "../core/view.js";
 import { t } from "../i18n/index.js";
+import { hxAttrs, type HxProps } from "./hx.js";
 import { cx, type WithChildren } from "./types.js";
 
 /**
@@ -22,8 +23,23 @@ function feedback(id: string, error?: string, hint?: string): { node: Child; des
  * @group form
  * @example h(Form, { action: "/produk" }, h(Field, { name: "nama", label: "Nama" }), h(FormActions, null, h(Button, null, "Simpan")))
  */
-export function Form({ action, method = "post", upload, children }: WithChildren<{ action?: string; method?: "post" | "get"; upload?: boolean }>): Child {
-  return h("form", { class: "zu-form", method, action, enctype: upload ? "multipart/form-data" : undefined }, children);
+export function Form({
+  action,
+  method = "post",
+  upload,
+  id,
+  hx,
+  children,
+}: WithChildren<{
+  action?: string;
+  method?: "post" | "get";
+  upload?: boolean;
+  id?: string;
+  /** Kirim lewat htmx tanpa muat ulang halaman, mis. { target: "this", swap: "outerHTML" } (hx-post/hx-get = action). */
+  hx?: HxProps;
+}>): Child {
+  const verb = method === "get" ? { get: action ?? "" } : { post: action ?? "" };
+  return h("form", { class: "zu-form", method, action, id, enctype: upload ? "multipart/form-data" : undefined, "hx-encoding": hx && upload ? "multipart/form-data" : undefined, ...hxAttrs(hx, verb) }, children);
 }
 
 /**
@@ -72,6 +88,8 @@ export interface FieldProps {
   suffix?: string;
   /** Tombol Tampilkan/Sembunyikan untuk password (default true; butuh skrip bawaan page()). */
   reveal?: boolean;
+  /** Atribut htmx di input, mis. { get: "/cek-email", trigger: "change", target: "#email-info" }. */
+  hx?: HxProps;
 }
 
 /**
@@ -91,7 +109,7 @@ export function Field(props: WithChildren<FieldProps>): Child {
     type === "textarea"
       ? h(
           "textarea",
-          { class: "zu-input zu-textarea", id, name: props.name, rows: props.rows ?? 4, maxlength: props.maxlength, placeholder: props.placeholder, required: props.required, disabled: props.disabled, autofocus: props.autofocus, ...aria },
+          { class: "zu-input zu-textarea", id, name: props.name, rows: props.rows ?? 4, maxlength: props.maxlength, placeholder: props.placeholder, required: props.required, disabled: props.disabled, autofocus: props.autofocus, ...aria, ...hxAttrs(props.hx) },
           props.value === undefined ? "" : String(props.value),
         )
       : h("input", {
@@ -111,6 +129,7 @@ export function Field(props: WithChildren<FieldProps>): Child {
           inputmode: props.inputmode,
           autofocus: props.autofocus,
           ...aria,
+          ...hxAttrs(props.hx),
         });
   const reveal = type === "password" && props.reveal !== false;
   if (props.prefix || props.suffix || reveal) {
@@ -161,6 +180,8 @@ export function Select(
     disabled?: boolean;
     multiple?: boolean;
     autofocus?: boolean;
+    /** Atribut htmx di select, mis. { get: "/kota", trigger: "change", target: "#kota" }. */
+    hx?: HxProps;
   }>,
 ): Child {
   const id = `f-${props.name}`;
@@ -186,6 +207,7 @@ export function Select(
         autofocus: props.autofocus,
         "aria-invalid": props.error ? "true" : undefined,
         "aria-describedby": fb.describedBy,
+        ...hxAttrs(props.hx),
       },
       props.placeholder !== undefined && !props.multiple ? h("option", { value: "", selected: selected.size === 0 }, props.placeholder || t().ui.choose) : null,
       props.options.map((o) => (typeof o === "object" && "group" in o ? h("optgroup", { label: o.group }, o.options.map(render)) : render(o))),
@@ -201,7 +223,7 @@ export function Select(
  * @group form
  * @example h(Checkbox, { name: "ingat", label: "Ingat saya", checked: true })
  */
-export function Checkbox(props: WithChildren<{ name: string; label: string; value?: string; checked?: boolean; hint?: string; error?: string; required?: boolean; disabled?: boolean }>): Child {
+export function Checkbox(props: WithChildren<{ name: string; label: string; value?: string; checked?: boolean; hint?: string; error?: string; required?: boolean; disabled?: boolean; hx?: HxProps }>): Child {
   const id = `f-${props.name}`;
   const fb = feedback(id, props.error, undefined);
   return h(
@@ -210,7 +232,7 @@ export function Checkbox(props: WithChildren<{ name: string; label: string; valu
     h(
       "label",
       { class: cx("zu-check", props.disabled && "disabled") },
-      h("input", { type: "checkbox", id, name: props.name, value: props.value ?? "1", checked: props.checked, required: props.required, disabled: props.disabled, "aria-invalid": props.error ? "true" : undefined, "aria-describedby": fb.describedBy }),
+      h("input", { type: "checkbox", id, name: props.name, value: props.value ?? "1", checked: props.checked, required: props.required, disabled: props.disabled, "aria-invalid": props.error ? "true" : undefined, "aria-describedby": fb.describedBy, ...hxAttrs(props.hx) }),
       h("span", null, props.label, props.hint ? h("small", null, props.hint) : null),
     ),
     fb.node,
@@ -281,14 +303,14 @@ export function RadioGroup(props: WithChildren<GroupProps & { value?: string | n
  * @group form
  * @example h(Switch, { name: "notifikasi", label: "Kirim notifikasi email", hint: "Saat ada pesanan baru", checked: settings.notify })
  */
-export function Switch(props: WithChildren<{ name: string; label: string; value?: string; checked?: boolean; hint?: string; disabled?: boolean }>): Child {
+export function Switch(props: WithChildren<{ name: string; label: string; value?: string; checked?: boolean; hint?: string; disabled?: boolean; /** Simpan langsung saat diubah, mis. { post: "/pengaturan/notifikasi", trigger: "change", swap: "none" }. */ hx?: HxProps }>): Child {
   return h(
     "div",
     { class: "zu-field" },
     h(
       "label",
       { class: "zu-switch" },
-      h("input", { type: "checkbox", role: "switch", id: `f-${props.name}`, name: props.name, value: props.value ?? "1", checked: props.checked, disabled: props.disabled }),
+      h("input", { type: "checkbox", role: "switch", id: `f-${props.name}`, name: props.name, value: props.value ?? "1", checked: props.checked, disabled: props.disabled, ...hxAttrs(props.hx) }),
       h("span", { class: "zu-switch-track", "aria-hidden": "true" }),
       h("span", null, props.label, props.hint ? h("small", null, props.hint) : null),
     ),
@@ -391,4 +413,113 @@ export function FileInput(
  */
 export function Fieldset({ legend, hint, box, children }: WithChildren<{ legend: string; hint?: string; box?: boolean }>): Child {
   return h("fieldset", { class: cx("zu-fieldset", box && "box") }, h("legend", null, legend), hint ? h("small", null, hint) : null, children);
+}
+
+export interface ComboOption {
+  value: string | number;
+  label: string;
+  /** Keterangan kecil di bawah label, mis. email pengguna. */
+  hint?: string;
+}
+
+/**
+ * Daftar pilihan hasil pencarian untuk Combobox. Kembalikan ini dari route `source` Combobox:
+ * pilihan yang sedang terpilih (`value`) selalu ikut tampil agar tidak hilang saat mencari.
+ * @en List of search results for a Combobox. Return this from the Combobox `source` route: the currently selected option (`value`) always stays in the list so it is not lost while searching.
+ * @group form
+ * @example fragment(renderToString(h(ComboboxOptions, { name: "userId", value: ctx.query.userId, options: users.map((u) => ({ value: u.id, label: u.name, hint: u.email })) })))
+ */
+export function ComboboxOptions({
+  name,
+  options,
+  value,
+  selected,
+  allowEmpty,
+}: WithChildren<{
+  name: string;
+  options: ComboOption[];
+  /** Nilai yang sedang terpilih. */
+  value?: string | number | string[] | null;
+  /** Label pilihan terpilih bila tidak ada di `options` (mis. hasil pencarian lain). */
+  selected?: ComboOption;
+  /** Tambah pilihan "Tidak ada" (nilai kosong) untuk kolom yang boleh kosong. */
+  allowEmpty?: boolean;
+}>): Child {
+  const m = t().ui;
+  const current = Array.isArray(value) ? value[0] : value;
+  const chosen = current === undefined || current === null ? "" : String(current);
+  const list = [...options];
+  if (chosen && !list.some((o) => String(o.value) === chosen) && selected && String(selected.value) === chosen) list.unshift(selected);
+  const id = `f-${name}`;
+  const item = (o: ComboOption, i: number) =>
+    h(
+      "label",
+      { class: "zu-combo-item" },
+      h("input", { type: "radio", id: `${id}-${i}`, name, value: String(o.value), checked: String(o.value) === chosen }),
+      h("span", null, o.label, o.hint ? h("small", null, o.hint) : null),
+    );
+  return [
+    allowEmpty ? h("label", { class: "zu-combo-item none" }, h("input", { type: "radio", name, value: "", checked: chosen === "" }), h("span", null, m.comboNone)) : null,
+    list.map(item),
+    list.length === 0 ? h("p", { class: "zu-combo-empty" }, m.comboEmpty) : null,
+  ];
+}
+
+/**
+ * Pilih satu data dari daftar panjang dengan pencarian di server (mis. pelanggan dari ribuan data).
+ * Saat mengetik, htmx meminta `source?q=...&name=...` dan menampilkan hasilnya (balas dengan
+ * ComboboxOptions). Pilihannya berupa tombol radio biasa, jadi nilai terkirim bersama formulir dan
+ * tetap bisa dipilih tanpa JavaScript dari `options` awal.
+ * @en Pick one record from a long list with a server-side search (e.g. a customer out of thousands). While typing, htmx requests `source?q=...&name=...` and shows the result (reply with ComboboxOptions). The choices are plain radio buttons, so the value is sent with the form and can still be picked without JavaScript from the initial `options`.
+ * @group form
+ * @example h(Combobox, { name: "customerId", label: "Pelanggan", source: "/pelanggan/pilihan", value: order.customerId, selected: { value: customer.id, label: customer.name }, options: recent })
+ */
+export function Combobox(
+  props: WithChildren<{
+    name: string;
+    label: string;
+    /** URL pencarian yang membalas ComboboxOptions; menerima query `q`, `name`, dan nilai terpilih. */
+    source: string;
+    /** Pilihan awal (mis. 10 data terbaru). */
+    options?: ComboOption[];
+    value?: string | number | null;
+    /** Label nilai terpilih bila tidak ada di `options`. */
+    selected?: ComboOption;
+    placeholder?: string;
+    required?: boolean;
+    error?: string;
+    hint?: string;
+  }>,
+): Child {
+  const m = t().ui;
+  const id = `f-${props.name}`;
+  const fb = feedback(id, props.error, props.hint);
+  return h(
+    "fieldset",
+    { class: "zu-fieldset zu-combobox", id, "aria-describedby": fb.describedBy },
+    h("legend", null, props.label, props.required ? h("span", { class: "zu-sr" }, " *") : null),
+    h("input", {
+      class: "zu-input",
+      type: "search",
+      // Kotak cari tidak ikut terkirim bersama formulir induknya (form menunjuk ke formulir yang tidak ada).
+      form: `${id}-none`,
+      name: "q",
+      placeholder: props.placeholder ?? m.searchPlaceholder,
+      "aria-label": m.comboSearch(props.label),
+      "aria-controls": `${id}-list`,
+      autocomplete: "off",
+      "hx-get": props.source,
+      "hx-trigger": "input changed delay:250ms, search",
+      "hx-target": `#${id}-list`,
+      "hx-vals": JSON.stringify({ name: props.name }),
+      "hx-include": `#${id}-list input:checked`,
+      "hx-sync": "this:replace",
+    }),
+    h(
+      "div",
+      { class: "zu-combo-list", id: `${id}-list`, role: "radiogroup", "aria-label": props.label, "aria-invalid": props.error ? "true" : undefined },
+      h(ComboboxOptions, { name: props.name, options: props.options ?? [], value: props.value, selected: props.selected, allowEmpty: !props.required }),
+    ),
+    fb.node,
+  );
 }

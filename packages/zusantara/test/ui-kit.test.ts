@@ -213,7 +213,7 @@ describe("katalog komponen dan galeri", () => {
     assert.match(detail, /Example:\n {2}h\(Switch, /);
     assert.deepEqual(similarEntries("Selekt"), ["Select"]);
     assert.equal(catalogForAi({ component: "Nope" }), undefined);
-    assert.match(catalogForAi({ group: "form" })!, /^form:\n- Form\(\{ action\?, method\?, upload\? \}\): POST form/);
+    assert.match(catalogForAi({ group: "form" })!, /^form:\n- Form\(\{ action\?, method\?, upload\?, id\?, hx\? \}\): POST form/);
     assert.match(SYSTEM_PROMPT, /- layout: Container\(\{ size\?, pad\? \}\), Stack\(/);
     assert.match(SYSTEM_PROMPT, /theme --accent blue, never CSS/);
   });

@@ -188,8 +188,14 @@ describe("example app: auth + notes", () => {
     assert.equal((await form(`/notes/${id}/delete`, {}, budi)).headers.get("location"), "/notes");
     assert.equal((await page(`/notes/${id}`, budi)).status, 404);
     assert.equal((await page("/notes/abc", budi)).status, 404);
-    assert.equal((await page("/admin", admin)).headers.get("location"), "/admin/users");
-    assert.match(await (await page("/admin/users", admin)).text(), /ben@mail\.test/);
+    assert.match(await (await page("/admin", admin)).text(), /Admin dashboard/);
+    const adminUsers = await (await page("/admin/users", admin)).text();
+    assert.match(adminUsers, /ben@mail\.test/);
+    // Admins cannot remove their own admin role (beforeSave di src/app/admin/users.ts).
+    const adminId = /href="\/admin\/users\/(\d+)">Admin</.exec(adminUsers)![1];
+    const demote = await form(`/admin/users/${adminId}/field/role`, { role: "user" }, admin);
+    assert.match(await (await page("/admin/users", cookieOf(demote) || admin)).text(), /You cannot remove/);
+    assert.equal((await page("/admin", admin)).status, 200);
   });
 
   it("wrong sign-in -> the same 401; brute force -> 429", async () => {

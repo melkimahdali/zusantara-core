@@ -1,7 +1,8 @@
 import { h, type Child } from "../core/view.js";
 import { getLocale, t } from "../i18n/index.js";
 import { CATALOG_GROUPS, entryText, UI_CATALOG, UI_EXAMPLES } from "./catalog.js";
-import { Checkbox, CheckboxGroup, Field, Fieldset, FileInput, Form, FormActions, FormRow, RadioGroup, Select, Switch } from "./forms.js";
+import { Checkbox, CheckboxGroup, Combobox, ComboboxOptions, Field, Fieldset, FileInput, Form, FormActions, FormRow, RadioGroup, Select, Switch } from "./forms.js";
+import { DataTable, InlineEdit } from "./table.js";
 import {
   Alert,
   Avatar,
@@ -160,6 +161,37 @@ export const GALLERY_DEMOS: Record<string, () => Child> = {
         ["Americano", "8", rupiah(22000)],
       ],
     }),
+  DataTable: () =>
+    h(DataTable, {
+      columns: [
+        { key: "name", label: L("Produk", "Product"), sortable: true },
+        { key: "stock", label: L("Stok", "Stock"), align: "num", sortable: true },
+        { key: "price", label: L("Harga", "Price"), align: "num", sortable: true },
+      ],
+      rows: [
+        ["Americano", "8", rupiah(22000)],
+        ["Latte", "12", rupiah(28000)],
+      ],
+      sort: { key: "name", dir: "asc" },
+      sortHref: "#{key}-{dir}",
+    }),
+  InlineEdit: () =>
+    h(Cluster, null, h(InlineEdit, { action: "#", name: "stock", label: L("Stok", "Stock"), type: "number", value: 12 }), h(InlineEdit, { action: "#aktif", name: "active", label: L("Aktif", "Active"), type: "switch", value: true })),
+  Combobox: () =>
+    h(Combobox, {
+      name: "customerId",
+      label: L("Pelanggan", "Customer"),
+      source: "#",
+      value: 2,
+      required: true,
+      options: [
+        { value: 1, label: "Sari Dewi", hint: "sari@contoh.id" },
+        { value: 2, label: "Budi Santoso", hint: "budi@contoh.id" },
+        { value: 3, label: "Rina Wati", hint: "rina@contoh.id" },
+      ],
+    }),
+  ComboboxOptions: () =>
+    h("div", { class: "zu-combo-list", role: "radiogroup", "aria-label": L("Hasil", "Results") }, h(ComboboxOptions, { name: "demoCustomer", value: 1, options: [{ value: 1, label: "Sari Dewi" }, { value: 4, label: "Sarah" }] })),
   List: () => h(List, { items: [[h("span", { class: "zu-muted" }, "Email"), "sari@contoh.id"], [h("span", { class: "zu-muted" }, L("Peran", "Role")), "Admin"]] }),
   Alert: () => h(Stack, { gap: "sm" }, h(Alert, null, L("Info untuk pengguna.", "Information for the user.")), h(Alert, { tone: "success" }, L("Produk tersimpan.", "Product saved.")), h(Alert, { tone: "warn" }, L("Stok hampir habis.", "Stock is running low.")), h(Alert, { tone: "error" }, L("Gagal menyimpan.", "Could not save."))),
   EmptyState: () => h(EmptyState, { title: L("Belum ada produk", "No products yet"), text: L("Tambahkan produk pertama Anda.", "Add your first product."), action: h(Button, { href: "#", small: true }, L("Tambah produk", "Add product")) }),

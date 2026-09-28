@@ -23,8 +23,8 @@ function platformCommand(command, args) {
 const templates = process.argv.slice(2).length ? process.argv.slice(2) : ["api", "minimal", "api:en"];
 /** Teks yang diharapkan di aplikasi hasil scaffold, per bahasa. */
 const EXPECT = {
-  id: { seeded: "Admin dibuat", home: "Aplikasi Anda", notFound: "Halaman tidak ditemukan", devRoutes: "Route yang tersedia", signIn: "Masuk" },
-  en: { seeded: "Admin created", home: "Your app", notFound: "Page not found", devRoutes: "Available routes", signIn: "Sign in" },
+  id: { seeded: "Admin dibuat", home: "Aplikasi Anda", notFound: "Halaman tidak ditemukan", devRoutes: "Route yang tersedia", signIn: "Masuk", adminTitle: "Dasbor admin", unchanged: "Tetap" },
+  en: { seeded: "Admin created", home: "Your app", notFound: "Page not found", devRoutes: "Available routes", signIn: "Sign in", adminTitle: "Admin dashboard", unchanged: "Unchanged" },
 };
 
 function sh(cmd, args, cwd, extraEnv = {}) {
@@ -170,6 +170,12 @@ try {
       sh(process.execPath, [...cli, "db:migrate"], app);
       check(sh(process.execPath, [...cli, "db:seed"], app).includes(expect.seeded), "db:migrate & db:seed");
       check(/No schema changes/.test(sh(process.execPath, [...cli, "db:generate"], app)), "db:generate (drizzle-kit) berjalan");
+      // Panel admin bawaan template dibuat oleh make:admin: menjalankan ulang tidak mengubah apa pun.
+      const remake = sh(process.execPath, [...cli, "make:admin", "--all"], app);
+      check(remake.includes(`${expect.unchanged}: src/app/admin/users.ts`) && remake.includes(`${expect.unchanged}: src/app/admin/notes.ts`), "make:admin --all: file template tetap (blok tidak berubah)");
+      const manifest = JSON.parse(sh(process.execPath, [...cli, "describe", "--json"], app));
+      check(manifest.manifestVersion === 1 && manifest.tables.some((t) => t.name === "users") && manifest.admin?.resources.length === 2, "describe --json: tabel dan panel admin");
+      check(!JSON.stringify(manifest).includes("password_hash") && manifest.tables.find((t) => t.name === "users").hiddenColumns === 1, "describe --json: kolom rahasia tidak tampil");
     }
 
     // Produksi: zusantara start (dist/app). Env server pengembangan sengaja "terbawa": widget chat tetap tidak boleh muncul.
@@ -206,6 +212,17 @@ try {
         check(dash.status === 303 && dash.headers.get("location") === "/login?next=%2Fdashboard", "zusantara start: /dashboard mengarahkan tamu ke /login");
         const dashboard = await fetch(`http://127.0.0.1:${prodPort}/dashboard`, { headers: { cookie } });
         check(dashboard.status === 200 && noWidget(loginHtml) && noWidget(await dashboard.text()), "zusantara start: /login dan /dashboard (login) tanpa widget chat");
+        const adminDash = await fetch(`http://127.0.0.1:${prodPort}/admin`, { headers: { cookie } });
+        const adminHtml = await adminDash.text();
+        check(adminDash.status === 200 && adminHtml.includes(expect.adminTitle) && adminDash.headers.get("x-robots-tag")?.includes("noindex") && adminDash.headers.get("cache-control") === "no-store", "zusantara start: /admin (dasbor admin, noindex, no-store)");
+        check((await fetch(`http://127.0.0.1:${prodPort}/admin/users`, { redirect: "manual" })).status === 303, "zusantara start: /admin/users mengarahkan tamu ke /login");
+        const usersPage = await (await fetch(`http://127.0.0.1:${prodPort}/admin/users`, { headers: { cookie } })).text();
+        check(usersPage.includes("admin@zusantara.test") && usersPage.includes("/_zusantara/htmx.js") && !usersPage.includes("password_hash"), "zusantara start: /admin/users dengan htmx, tanpa kolom rahasia");
+        const part = await fetch(`http://127.0.0.1:${prodPort}/admin/users?q=admin&f_role=`, { headers: { cookie, "hx-request": "true", "hx-target": "zu-admin-results" } });
+        const partHtml = await part.text();
+        check(part.status === 200 && !partHtml.includes("<html") && partHtml.includes('id="zu-admin-results"') && part.headers.get("hx-push-url") === "/admin/users?q=admin", "zusantara start: potongan htmx hasil cari dengan URL bersih");
+        const htmxJs = await fetch(`http://127.0.0.1:${prodPort}/_zusantara/htmx.js`);
+        check(htmxJs.status === 200 && /javascript/.test(htmxJs.headers.get("content-type") ?? ""), "zusantara start: /_zusantara/htmx.js");
       }
     } finally {
       stop();

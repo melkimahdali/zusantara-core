@@ -188,8 +188,14 @@ describe("aplikasi contoh: auth + catatan", () => {
     assert.equal((await form(`/notes/${id}/delete`, {}, budi)).headers.get("location"), "/notes");
     assert.equal((await page(`/notes/${id}`, budi)).status, 404);
     assert.equal((await page("/notes/abc", budi)).status, 404);
-    assert.equal((await page("/admin", admin)).headers.get("location"), "/admin/users");
-    assert.match(await (await page("/admin/users", admin)).text(), /budi@mail\.id/);
+    assert.match(await (await page("/admin", admin)).text(), /Dasbor admin/);
+    const adminUsers = await (await page("/admin/users", admin)).text();
+    assert.match(adminUsers, /budi@mail\.id/);
+    // Admin tidak bisa mencabut peran adminnya sendiri (beforeSave di src/app/admin/users.ts).
+    const adminId = /href="\/admin\/users\/(\d+)">Admin</.exec(adminUsers)![1];
+    const demote = await form(`/admin/users/${adminId}/field/role`, { role: "user" }, admin);
+    assert.match(await (await page("/admin/users", cookieOf(demote) || admin)).text(), /Anda tidak bisa mencabut/);
+    assert.equal((await page("/admin", admin)).status, 200);
   });
 
   it("login salah -> 401 yang sama; brute force -> 429", async () => {
