@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { FAVICON_PNG, LOGO_WEBP } from "../brand/assets.js";
 import { FONT_LATIN, FONT_LATIN_EXT, FONT_LICENSE } from "../ui/font.js";
+import { HTMX_JS, HTMX_LICENSE } from "../ui/htmx.gen.js";
 import { UI_CSS } from "../ui/styles.js";
 import { activeTheme } from "../ui/theme.js";
 
@@ -15,7 +16,7 @@ function fromDataUri(uri: string): Buffer {
 
 let assets: Map<string, Asset> | undefined;
 
-/** Aset bawaan framework di /_zusantara/* (stylesheet kit UI, font brand + lisensinya, logo, favicon). Dibuat sekali saat pertama diminta. */
+/** Aset bawaan framework di /_zusantara/* (stylesheet kit UI, font brand + lisensinya, htmx, logo, favicon). Dibuat sekali saat pertama diminta. */
 function builtinAssets(): Map<string, Asset> {
   assets ??= new Map([
     ["/_zusantara/ui.css", { type: "text/css; charset=utf-8", body: Buffer.from(UI_CSS.trim()) }],
@@ -24,6 +25,8 @@ function builtinAssets(): Map<string, Asset> {
     ["/_zusantara/fonts/plus-jakarta-sans-latin.woff2", { type: "font/woff2", body: Buffer.from(FONT_LATIN, "base64") }],
     ["/_zusantara/fonts/plus-jakarta-sans-latin-ext.woff2", { type: "font/woff2", body: Buffer.from(FONT_LATIN_EXT, "base64") }],
     ["/_zusantara/fonts/LICENSE.txt", { type: "text/plain; charset=utf-8", body: Buffer.from(FONT_LICENSE) }],
+    ["/_zusantara/htmx.js", { type: "text/javascript; charset=utf-8", body: Buffer.from(HTMX_JS) }],
+    ["/_zusantara/htmx.LICENSE.txt", { type: "text/plain; charset=utf-8", body: Buffer.from(HTMX_LICENSE) }],
   ]);
   return assets;
 }

@@ -23,6 +23,7 @@ export { html, json, redirect, text, ZenResponse, type ResponseInit } from "./re
 export { cors, csrf, type CorsOptions, type CsrfOptions } from "./security.js";
 export { session, Session, type SessionOptions } from "./session.js";
 export { flash, takeFlash, type Flash } from "./flash.js";
+export { fragment, htmxRequest, htmxTarget, hxHeaders, hxRedirect, isHtmx, type HtmxRequest, type HxResponseOptions } from "./htmx.js";
 export {
   parse,
   readInput,

@@ -36,6 +36,9 @@ Manual commands:
   zusantara make:route <path> [--methods GET,POST] Create a route file, e.g. api/events/[id]
   zusantara make:middleware <name>                 Create a middleware file
   zusantara make:job <name> [--schedule "<cron>"]  Create a job file, e.g. send-report
+  zusantara make:admin <table...> | --all         Admin panel from the database schema (/admin); safe to run
+                                                   again after the schema changes
+  zusantara describe [--json]                      App manifest: routes, tables, admin, jobs, plugins
   zusantara view <path> [--mobile|--tablet] [--dark] [--lang en] [--screenshot] [--text "a,b"]
                                                    View a page, check its layout, and score it (in the browser when a tab is open)
   zusantara requests [id] [--path /products] [--json] Recent requests on the dev server: time, queries, N+1, session, logs

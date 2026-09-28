@@ -291,7 +291,7 @@ async function listRoutes(args: ParsedArgs, io: CliIO): Promise<number> {
 }
 
 const KNOWN_COMMANDS = new Set([
-  "help", "dev", "build", "start", "routes", "make:route", "make:middleware", "make:job", "ai", "ai:status", "ai:setup", "undo", "db:generate", "db:migrate", "db:seed", "lang", "jobs", "jobs:run", "view", "requests", "ai:log", "ui", "theme", "migrate:zusantara",
+  "help", "dev", "build", "start", "routes", "make:route", "make:middleware", "make:job", "make:admin", "describe", "ai", "ai:status", "ai:setup", "undo", "db:generate", "db:migrate", "db:seed", "lang", "jobs", "jobs:run", "view", "requests", "ai:log", "ui", "theme", "migrate:zusantara",
 ]);
 
 /** Bahasa CLI: env ZUSANTARA_LANG, lalu `locale` di zusantara.config.mjs, lalu preferensi global, lalu Indonesia. */
@@ -878,6 +878,43 @@ async function ensureTypeScriptLoader(cwd: string): Promise<void> {
   register();
 }
 
+/** `zusantara make:admin <tabel...> [--all] [--force]`: halaman admin dari schema database. */
+async function makeAdminCommand(args: ParsedArgs, io: CliIO): Promise<number> {
+  let gen: typeof import("./admin/generate.js");
+  try {
+    gen = await import("./admin/generate.js");
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== "ERR_MODULE_NOT_FOUND") throw err;
+    io.err(t().cli.dbDepsMissing);
+    return 1;
+  }
+  try {
+    const result = await gen.makeAdmin(io.cwd, args.positional.slice(1), { all: args.flags.all === true, force: args.flags.force === true });
+    for (const line of result.lines) (result.ok ? io.out : io.err)(line);
+    return result.ok ? 0 : 1;
+  } catch (err) {
+    io.err((err as Error).message);
+    return 1;
+  }
+}
+
+/** `zusantara describe [--json]`: manifest aplikasi (route, tabel, admin, job, plugin) tanpa kolom rahasia. */
+async function describeCommand(args: ParsedArgs, io: CliIO): Promise<number> {
+  try {
+    const { describeApp, formatManifest } = await import("./admin/describe.js");
+    const manifest = await describeApp(io.cwd, version());
+    io.out(args.flags.json ? JSON.stringify(manifest, null, 2) : formatManifest(manifest));
+    return 0;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ERR_MODULE_NOT_FOUND" && /drizzle-orm/.test((err as Error).message)) {
+      io.err(t().cli.dbDepsMissing);
+      return 1;
+    }
+    io.err((err as Error).message);
+    return 1;
+  }
+}
+
 /** `zusantara migrate:zusantara`: pindahkan proyek Zentara lama ke nama baru. */
 function migrateName(io: CliIO): number {
   const m = t().cli.migrateName;
@@ -965,6 +1002,14 @@ export async function run(argv: readonly string[], io: CliIO): Promise<number> {
       const name = typeof args.flags.name === "string" ? args.flags.name : undefined;
       const fn = command === "db:generate" ? () => db.dbGenerate(io.cwd, name) : command === "db:migrate" ? () => db.dbMigrate(io.cwd) : () => db.dbSeed(io.cwd);
       return dbCommand(fn, io);
+    }
+    case "make:admin":
+    case "describe": {
+      // Seperti db:*: tabel dibaca dengan drizzle-orm milik proyek, jadi jalankan lewat CLI proyek bila ada.
+      const local = findLocalCli(io.cwd, fileURLToPath(import.meta.url));
+      if (local) return runLocalCli(local, argv, io.cwd);
+      loadDotEnv(io.cwd);
+      return command === "describe" ? describeCommand(args, io) : makeAdminCommand(args, io);
     }
     case "routes":
       return listRoutes(args, io);

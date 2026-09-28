@@ -1,6 +1,7 @@
 import { h, type Child } from "../core/view.js";
 import { t } from "../i18n/index.js";
 import { Brand } from "./index.js";
+import { hxAttrs, type HxProps } from "./hx.js";
 import { cx, type WithChildren } from "./types.js";
 
 /**
@@ -93,12 +94,12 @@ export interface TabItem {
  * @group nav
  * @example h(Tabs, { items: [{ href: "?tab=baru", label: "Baru", count: 3 }, { href: "?tab=selesai", label: "Selesai" }], active: `?tab=${tab}` })
  */
-export function Tabs({ items, active, label }: WithChildren<{ items: TabItem[]; active?: string; label?: string }>): Child {
+export function Tabs({ items, active, label, hx }: WithChildren<{ items: TabItem[]; active?: string; label?: string; /** Muat isi tab lewat htmx, mis. { target: "#isi", pushUrl: true } (hx-get = href tab). */ hx?: HxProps }>): Child {
   return h(
     "nav",
     { class: "zu-tabs", "aria-label": label },
     items.map((item) =>
-      h("a", { href: item.href, "aria-current": item.href === active ? "page" : undefined }, item.label, item.count !== undefined ? h("span", { class: "zu-tab-count" }, String(item.count)) : null),
+      h("a", { href: item.href, "aria-current": item.href === active ? "page" : undefined, ...hxAttrs(hx, { get: item.href }) }, item.label, item.count !== undefined ? h("span", { class: "zu-tab-count" }, String(item.count)) : null),
     ),
   );
 }
@@ -121,13 +122,18 @@ function pageWindow(current: number, pages: number, around = 1): number[] {
  * @group nav
  * @example h(Pagination, { page: Number(ctx.query.page ?? 1), pages: Math.ceil(total / 20), href: "/produk?page={page}" })
  */
-export function Pagination({ page, pages, href = "?page={page}" }: WithChildren<{ page: number; pages: number; href?: string }>): Child {
+export function Pagination({
+  page,
+  pages,
+  href = "?page={page}",
+  hx,
+}: WithChildren<{ page: number; pages: number; href?: string; /** Pindah halaman lewat htmx, mis. { target: "#hasil", pushUrl: true } (hx-get = href nomor halaman). */ hx?: HxProps }>): Child {
   if (pages <= 1) return null;
   const m = t().ui;
   const current = Math.min(Math.max(1, Math.floor(page) || 1), pages);
   const url = (p: number) => href.replaceAll("{page}", String(p));
   const edge = (p: number, label: string, rel: string, cls: string) =>
-    p >= 1 && p <= pages ? h("a", { class: `zu-page ${cls}`, href: url(p), rel }, label) : h("span", { class: `zu-page ${cls}`, "aria-disabled": "true" }, label);
+    p >= 1 && p <= pages ? h("a", { class: `zu-page ${cls}`, href: url(p), rel, ...hxAttrs(hx, { get: url(p) }) }, label) : h("span", { class: `zu-page ${cls}`, "aria-disabled": "true" }, label);
   return h(
     "nav",
     { class: "zu-pagination", "aria-label": m.pagination },
@@ -136,7 +142,7 @@ export function Pagination({ page, pages, href = "?page={page}" }: WithChildren<
       "ol",
       null,
       pageWindow(current, pages).map((p) =>
-        h("li", null, p === 0 ? h("span", { class: "zu-page gap" }, "…") : p === current ? h("span", { class: "zu-page", "aria-current": "page" }, String(p)) : h("a", { class: "zu-page", href: url(p), "aria-label": m.pageOf(p, pages) }, String(p))),
+        h("li", null, p === 0 ? h("span", { class: "zu-page gap" }, "…") : p === current ? h("span", { class: "zu-page", "aria-current": "page" }, String(p)) : h("a", { class: "zu-page", href: url(p), "aria-label": m.pageOf(p, pages), ...hxAttrs(hx, { get: url(p) }) }, String(p))),
       ),
     ),
     h("span", { class: "zu-page-label" }, m.pageOf(current, pages)),

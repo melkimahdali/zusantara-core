@@ -146,6 +146,8 @@ export const PROBE_JS = String.raw`
       if (r.width < 1 || r.height < 1) continue;
       var cs = win.getComputedStyle(el);
       if (cs.visibility === "hidden" || cs.display === "none" || Number(cs.opacity) < 0.02) continue;
+      // Teks khusus pembaca layar (kelas zu-sr dan sejenisnya): sengaja 1x1 px, bukan teks terpotong.
+      if (cs.position === "absolute" && r.width <= 1 && r.height <= 1) continue;
       var item = { tag: tag.toLowerCase(), x: Math.round(r.left + sx), y: Math.round(r.top + sy), w: Math.round(r.width), h: Math.round(r.height) };
       if (role) item.role = role;
       if (r.bottom < 0 || r.top > vh || r.right < 0 || r.left > vw) item.off = true;
@@ -261,6 +263,8 @@ export const PROBE_JS = String.raw`
       if (r.width < 1 || r.height < 1) continue;
       var cs = win.getComputedStyle(el);
       if (cs.visibility === "hidden" || cs.display === "none" || Number(cs.opacity) < 0.02) continue;
+      // Teks khusus pembaca layar (kelas zu-sr dan sejenisnya): sengaja 1x1 px, bukan teks terpotong.
+      if (cs.position === "absolute" && r.width <= 1 && r.height <= 1) continue;
       // Isi <details> yang tertutup (dan subtree content-visibility:hidden lain) tidak terlihat, walau
       // getBoundingClientRect masih memberi ukuran.
       var shut = el.parentElement && el.parentElement.closest ? el.parentElement.closest("details:not([open])") : null;

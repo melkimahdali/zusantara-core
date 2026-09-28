@@ -1,17 +1,18 @@
 import { h, type Child, type ZenContext } from "zusantara";
 import { AppShell, page, type NavItem } from "zusantara/ui";
+import { adminNav } from "../admin/index.js";
 import type { User } from "../db/schema.js";
 
 /** App name in page titles and the top navigation. */
 export const APP_NAME = "Zusantara App";
 
-/** Top navigation; the "Manage" section is for admins only. Add your new pages here. */
+/** Top navigation; the Admin menu only shows for users who have access. Add your new pages here. */
 function navFor(user: User): NavItem[] {
   const nav: NavItem[] = [
     { href: "/dashboard", label: "Dashboard" },
     { href: "/notes", label: "Notes" },
   ];
-  if (user.role === "admin") nav.push({ href: "/admin/users", label: "Users", section: "Manage" });
+  nav.push(...adminNav(user));
   return nav;
 }
 

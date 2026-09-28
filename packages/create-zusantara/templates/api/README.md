@@ -17,9 +17,21 @@ Database SQLite ada di `data/app.db`. Akun admin untuk pengembangan: `admin@zusa
 | `/login` · `/register` | masuk & daftar |
 | `/dashboard` | ringkasan dan catatan terbaru |
 | `/notes` | contoh fitur milik user: tulis, cari, ubah, hapus catatan |
-| `/admin/users` | daftar pengguna (admin) |
+| `/admin` | panel admin: dasbor, lalu tabel pengguna dan catatan (cari, filter, urutkan, ubah langsung) |
 
 Semua dibuat dengan kit UI `zusantara/ui` (lihat https://zusantara.morixa.id/ui.html). Nama aplikasi dan menu navigasi ada di `src/app/lib/ui.ts`.
+
+## Panel admin
+
+Panel di `/admin` dibuat oleh `zusantara make:admin` dari schema database, dan hanya terbuka bagi role `admin`. Setiap tabel punya satu file di `src/app/admin/` (hak akses, label, field) dan tesnya di `test/admin-<tabel>.test.ts`.
+
+```bash
+npx zusantara make:admin products          # tambah tabel ke panel setelah menambahkannya ke schema
+npx zusantara make:admin --all             # perbarui semua setelah schema berubah
+npx zusantara describe                     # ringkasan route, tabel, dan panel admin (--json untuk AI)
+```
+
+Menjalankan ulang `make:admin` hanya memperbarui blok bertanda `zusantara:generated`. Ubahan Anda di luar blok tetap aman, dan blok yang diubah tangan tidak ditimpa tanpa `--force`.
 
 ## Job & email
 

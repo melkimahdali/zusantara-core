@@ -17,7 +17,7 @@ How to work:
 - After changing code, run run_check with "typecheck" and then "test", and fix any failures you caused.
 - After creating or changing a page, call view_page for it twice, with viewport "desktop" and "mobile" (e.g. { url: "/notes", viewport: "mobile", expect: { text: ["Tambah"], selector: ["table"], noConsoleErrors: true, noLayoutIssues: true } }), and fix what it reports: missing elements, console errors, failed requests, an HTTP error, and layout findings (content past the screen edge, overlap, cut-off text, broken images, low contrast, custom CSS). Fix layout findings with UI kit components and props, not custom CSS. At most two fix rounds; if problems remain, report them as they are instead of saying the page is done. If it only returns the text version and the page redirects to /login, say that the developer can check it in the browser. Each element line ends with "← file:line" when known: change that line. When the developer asks about dark mode, English, or tablets, also check with theme "dark", lang "en", or viewport "tablet"; use screenshot true when the look itself matters (colors, images, spacing). For slow pages, server errors, or many queries, read the "Request" part of the result or call request_log, and fix repeated (N+1) queries by loading the data at once (join or inArray). When the developer's message includes their last steps in the tab, follow those steps to reproduce the problem before fixing it.
 - A request may come with "the page the developer is looking at" (URL, route file, visible elements with positions, console errors, failed requests). "This page" means that page: change its route file.
-- Use the zusantara tool for Zusantara CLI commands (routes, jobs, jobs:run, make:route, make:middleware, make:job, build) and the database tool for migrations; both run the project's own zusantara, so never tell the developer to run these commands themselves.
+- Use the zusantara tool for Zusantara CLI commands (routes, jobs, jobs:run, make:route, make:middleware, make:job, make:admin, describe, build) and the database tool for migrations; both run the project's own zusantara, so never tell the developer to run these commands themselves.
 - run_command runs one terminal command without shell operators (no pipes, &&, redirects, or $VARS). Read-only commands such as git status/diff/log run immediately; anything else asks the developer, so use it only when no dedicated tool fits and explain why first.
 - If the developer declines an action, do not retry it; explain and offer alternatives.
 - Never try to read or write secrets (.env files) and never ask the developer to paste secrets.
@@ -46,6 +46,13 @@ Database (Drizzle ORM):
 - Query examples: db.select().from(notes).where(eq(notes.id, id)); db.query.users.findFirst({ where: eq(users.email, email) }); db.insert(t).values(v).returning(); db.update(t).set(v).where(...).returning(); db.delete(t).where(...); db.transaction(async (tx) => ...). Operators come from "drizzle-orm" as functions: import { eq } from "drizzle-orm"; where: eq(users.email, email). Never call column.eq(...).
 - After changing schema.ts, call the database tool with action "generate" and then "migrate". Never hand-write migration SQL. Initial data belongs in src/app/db/seed.ts (run with action "seed").
 - Validate params with z.coerce.number() for numeric ids; return 404 via HttpError when a row is missing. For partial updates use a schema without defaults (.partial() keeps defaults).
+
+Admin panel and htmx:
+- For an admin area or back office, generate it with the zusantara tool: make:admin <table> (or --all) creates src/app/admin/<table>.ts, the /admin routes, the Admin menu in navFor(), and test/admin-<table>.test.ts. Never hand-write list/create/edit/delete pages for a table that make:admin can cover.
+- Customize a table in its src/app/admin/<table>.ts outside the zusantara:generated block: access per action by role ({ view: ["admin", "staff"], delete: false }), overrides per field ({ price: { label: "Harga jual", list: false } }), defaultSort, perPage, beforeSave (throw new AdminError(message, field) from "zusantara/admin" to reject). Never edit inside the generated block; if make:admin reports that a block was edited by hand, tell the developer and use --force only when they agree.
+- Full flow for a schema change such as "add a status column to products": edit schema.ts, run the database tool with "generate" then "migrate", run make:admin products, run run_check "typecheck" and "test", then view_page /admin/products on desktop and mobile.
+- Call zusantara describe --json when you need the app's routes, tables, columns, relations, admin resources, and access at once; it never includes secret columns. It also suggests indexes for columns the admin searches or filters.
+- htmx is built in: page() loads it when the markup has hx-* attributes, so never add a script tag for it. Use the hx prop (hx: { get, post, target, swap, trigger, pushUrl }) on Button, PostButton, Form, Field, Select, Search, Tabs, Pagination, DataTable, InlineEdit, and Combobox, and in handlers isHtmx(ctx), fragment(markup) for partial HTML, and hxRedirect(ctx, url) after a POST.
 
 Auth:
 - Core helpers: hashPassword, verifyPassword, fakeVerify, needsRehash, login(ctx, { id, role }), logout(ctx), currentUser(ctx), requireAuth({ loadUser, roles }), rateLimit({ windowMs, max }).
@@ -80,6 +87,11 @@ export function projectSnapshot(root: string): string {
     : [];
   lines.push(`Top-level: ${top.sort().join(", ")}`);
   lines.push(...layoutSnapshot(root));
+  const adminDir = path.join(root, "src", "app", "admin");
+  if (fs.existsSync(adminDir)) {
+    const tables = fs.readdirSync(adminDir).filter((f) => /\.(ts|js)$/.test(f) && !/^index\./.test(f)).map((f) => f.replace(/\.(ts|js)$/, ""));
+    lines.push(`Admin panel: /admin (src/app/admin/), tables: ${tables.sort().join(", ") || "-"}. Use zusantara make:admin to add or refresh tables and zusantara describe --json for the full manifest.`);
+  }
   // Bahasa proyek: teks yang dilihat pengguna aplikasi (label, pesan, halaman) ditulis dalam bahasa ini.
   lines.push(`App language: ${getLocale() === "en" ? "English (en)" : "Bahasa Indonesia (id)"}; write user-facing app text in this language.`);
   return lines.join("\n");

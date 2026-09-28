@@ -2,6 +2,29 @@
 
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.1.0/). Versi `zusantara` dan `create-zusantara` (sebelum 0.12.10: `zentara` dan `create-zentara`) selalu dinaikkan bersamaan.
 
+## [0.13.0]
+
+### Ditambahkan
+- **Panel admin (`zusantara/admin`) dan `zusantara make:admin <tabel...> | --all`.** Dari tabel di schema Drizzle dibuat dasbor admin (jumlah data dan data terbaru per tabel), daftar dengan pencarian di beberapa kolom, filter sesuai tipe (enum, boolean, rentang tanggal), urutan per kolom, halaman, formulir tambah dan ubah, hapus, dan ubah langsung di tabel untuk enum dan boolean. Relasi memakai `Combobox` dengan pencarian di server, dan kolom gambar/file memakai `FileInput` dengan pratinjau. [Dokumentasi](https://zusantara.morixa.id/admin.html).
+- **Bisa dijalankan ulang.** Hanya blok `zusantara:generated` yang ditulis ulang setelah schema berubah. Sidik sha256 di baris pembuka blok membuat ubahan tangan di dalam blok terdeteksi dan tidak ditimpa tanpa `--force`.
+- **Hak akses per tabel dan per aksi** (`view`, `create`, `update`, `delete`) dengan daftar role, `true`/`false`, atau fungsi. Menu Admin hanya muncul bagi pengguna yang boleh melihat minimal satu tabel.
+- **Kolom rahasia** (password, hash, token, secret, salt, API key, OTP) tidak pernah tampil di panel, tes, maupun manifest. Tabel dengan kolom wajib yang tidak bisa diisi dari formulir otomatis tidak bisa ditambah dari panel.
+- **Galat database yang ramah:** nilai unik yang sudah dipakai muncul di field-nya, dan data yang masih dirujuk tidak dihapus. `beforeSave` bisa menolak dengan `throw new AdminError(pesan, field)`, termasuk saat ubah langsung di tabel.
+- `make:admin` juga membuat tes `test/admin-<tabel>.test.ts` dengan `testAdmin()`, yang menguji panel tanpa server dan tanpa login.
+- `defineResource({ table, db })` tanpa generator: nama, label, dan field dibaca dari schema.
+- **`zusantara describe [--json]`:** manifest aplikasi berisi route, tabel dan kolom (tanpa kolom rahasia), panel admin dan hak aksesnya, job, dan plugin, plus saran index untuk kolom yang dicari atau difilter tanpa index.
+- **htmx 2 di inti** (0BSD, disajikan dari `/_zusantara/htmx.js`). `page()` memuatnya otomatis bila markup memakai `hx-*`. Prop `hx` di Button, PostButton, Form, Field, Select, Checkbox, Switch, Search, Tabs, dan Pagination. Helper server `isHtmx()`, `htmxTarget()`, `fragment()`, `hxRedirect()`, dan `hxHeaders()`.
+- **Komponen kit UI baru:** `DataTable` (urut per kolom dengan `aria-sort`, kartu di HP), `InlineEdit`, `Combobox`, dan `ComboboxOptions`. `NavItem` mendapat `badge`.
+- Zusantara AI: tool `zusantara` mendukung `make:admin` (bisa di-undo, termasuk file tes) dan `describe`. Ringkasan proyek menyebut panel admin, dan instruksi AI memuat alur lengkap "tambah kolom status ke produk": schema, migrasi, `make:admin`, tes, lalu `view_page`.
+
+### Diubah
+- Template `api`: halaman `/admin/users` buatan tangan diganti panel admin buatan `make:admin` untuk tabel `users` dan `notes`, dengan tesnya. Admin tidak bisa mencabut peran adminnya sendiri, dan akun tidak dihapus dari panel.
+- Semua halaman admin dikirim dengan `X-Robots-Tag: noindex` dan `Cache-Control: no-store`.
+- Garis pemisah `StatGroup` kini benar saat kotak berpindah baris di layar sempit.
+
+### Kompatibilitas
+- Dukungan nama lama Zentara (perintah `zentara`, `zentara.config.*`, `ZENTARA_*`, `/_zentara/*`) masih ada di 0.13.0 dan dihapus di 0.13.1. Jalankan `zusantara migrate:zusantara` sebelum itu.
+
 ## [0.12.10]
 
 ### Diubah

@@ -1,4 +1,5 @@
 import type { Messages } from "../id/index.js";
+import { admin } from "./admin.js";
 import { ai } from "./ai.js";
 import { backend } from "./backend.js";
 import { cli } from "./cli.js";
@@ -9,4 +10,4 @@ import { tui } from "./tui.js";
 import { ui } from "./ui.js";
 
 /** English catalog. Its shape is checked against the Indonesian one, so a missing key fails typecheck. */
-export const en: Messages = { cli, host, ai, tui, dev, core, ui, backend };
+export const en: Messages = { cli, host, ai, tui, dev, core, ui, backend, admin };

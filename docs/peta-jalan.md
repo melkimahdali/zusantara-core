@@ -26,19 +26,19 @@ Zusantara adalah framework web umum, bukan framework untuk jenis aplikasi terten
 | 9 | 0.10 | Front-End: kit UI `zusantara/ui`, halaman bawaan, dan CLI berbasis Ink |
 | 10 | 0.12 | [Bahasa Inggris](bahasa.html): CLI, Zusantara AI, halaman bawaan, kit UI, template, dan dokumentasi dalam `id` dan `en` |
 | 11 | 0.12 | Back-End: [job & jadwal](jobs.html), [email](email.html), [unggah file](upload.html), [cache](cache.html) |
-
-Tahap 10 dan 11 dirilis bersama di 0.12.
-
-## Berikutnya
-
-| Tahap | Versi | Isi |
-|---|---|---|
 | 12 | 0.12.5 | Chat Zusantara AI di semua halaman saat pengembangan, dan AI bisa melihat halaman serta memeriksa tampilannya di desktop dan ponsel (`view_page`) |
 | 12b | 0.12.6 | Fondasi tampilan dan formulir lengkap: tata letak, Select, Checkbox, Radio, Switch, unggah file, tema di config, dan katalog komponen |
 | 12c | 0.12.7 | Navigasi, dialog, notifikasi, dan tampilan data: Navbar, Tabs, Pagination, Dialog, Toast, Accordion, Timeline, Calendar, halaman 403/404/500 |
 | 12d | 0.12.8 | Halaman publik dan pola siap pakai: Hero, Pricing, Gallery, FAQ, Testimonial, ProductCard, keranjang, dan contoh halaman utuh |
 | 12e | 0.12.9 | Alat pengembang: toolbar per request (query, N+1), mode inspeksi, skor halaman, varian tablet/gelap/en, tangkapan layar, rekaman langkah, input suara |
-| 13 | 0.13 | Fondasi panel admin dengan [htmx](https://htmx.org): CRUD dari schema yang bisa dibuat ulang, urutkan/cari/filter, hak akses, dasbor admin, dan `zusantara describe --json` |
+| 13 | 0.13 | Fondasi [panel admin](admin.html) dengan [htmx](https://htmx.org): CRUD dari schema yang bisa dibuat ulang, urutkan/cari/filter, hak akses, dasbor admin, dan `zusantara describe --json` |
+
+Tahap 10 dan 11 dirilis bersama di 0.12. Nama Zentara berganti menjadi Zusantara dan lisensinya menjadi MIT di 0.12.10.
+
+## Berikutnya
+
+| Tahap | Versi | Isi |
+|---|---|---|
 | 13b | 0.13.1 | Relasi, konten, dan alur kerja: many-to-many, CSV/Excel, log audit, revisi, draf dan terbit, SEO, media, persetujuan, otomasi, pengubah schema |
 | 13c | 0.13.2 | Tampilan kalender/kanban/spreadsheet, tampilan tersimpan, hak akses per kolom dan baris, kelola pengguna, multi-tenant, API dan webhook, UU PDP |
 | 13d | 0.13.3 | Template konten dan bisnis: Website Bisnis, Portofolio, Blog, Berita, Pemerintah, Penyedia Layanan, Statis, Publik |
@@ -142,7 +142,7 @@ Dibandingkan dengan Django Debug Toolbar, Laravel Telescope, Lighthouse, Sentry,
 
 Dibandingkan dengan Django Admin, Laravel Filament/Nova, Rails Avo, Airtable/NocoDB, Directus/Strapi, Retool/Metabase, Supabase Studio, dan Odoo/Salesforce. Panel admin harus cocok untuk jenis website apa pun, bukan hanya toko.
 
-#### Tahap 13 · 0.13: fondasi data dan panel admin
+#### Tahap 13 · 0.13: fondasi data dan panel admin (selesai)
 
 - htmx masuk inti, prop `hx` di kit UI, dan menu bertanda. Panel admin memakai komponen dari Tahap 12b sampai 12d, ditambah komponen yang butuh server: `Combobox` dengan pencarian dan tabel yang bisa diurutkan dan diubah langsung.
 - `zusantara make:admin` membuat halaman admin dari schema database, dan **bisa dijalankan ulang** setelah schema berubah tanpa menimpa kode yang sudah Anda ubah (hanya blok bertanda yang diperbarui).

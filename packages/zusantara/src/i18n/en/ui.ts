@@ -58,6 +58,11 @@ export const ui: Messages["ui"] = {
     discount: "Discount",
     total: "Total",
   },
+  sortBy: (label: string, asc: boolean) => `Sort ${label} ${asc ? "ascending" : "descending"}`,
+  save: "Save",
+  comboSearch: (label: string) => `Search ${label.toLowerCase()}`,
+  comboEmpty: "No matches.",
+  comboNone: "None",
   theme: {
     invalidObject: "ui in zusantara.config.mjs must be an object, e.g. ui: { accent: \"blue\" }",
     invalid: (key: string, value: string, allowed: string) => `Unknown ui.${key} value: ${value}. Options: ${allowed}`,

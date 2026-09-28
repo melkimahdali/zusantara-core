@@ -13,3 +13,4 @@ coverage/
 # Database SQLite lokal
 data/
 site-dist/
+packages/zusantara/.tmp-*/

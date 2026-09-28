@@ -167,6 +167,42 @@ h(Drawer, { id: "filters", title: "Filters" }, ...),
 
 A `Dialog` with `open: true` opens as soon as the page loads, for example when the form inside it has errors.
 
+## htmx
+
+htmx ships with Zusantara (version 2, 0BSD license, served from `/_zusantara/htmx.js`). `page()` loads it automatically when the page uses `hx-*` attributes, so you never add a script tag. Almost every interactive component takes an `hx` prop:
+
+```ts
+h(Search, { action: "/products", value: q, hx: { target: "#results" } }),    // results update as you type
+h(Button, { href: `/products?page=${page + 1}`, hx: { target: "#list", swap: "beforeend" } }, "Load more"),
+h(PostButton, { action: `/products/${p.id}/delete`, hx: { target: "closest tr", swap: "outerHTML" } }, "Delete"),
+h(Form, { action: "/products", hx: { post: "/products", target: "this", swap: "outerHTML" } }, ...),
+h(Tabs, { items, active, hx: { target: "#content", pushUrl: true } }),
+```
+
+`hx` options: `get`, `post`, `put`, `patch`, `delete`, `target`, `swap`, `trigger`, `pushUrl`, `select`, `indicator`, `confirm`, `include`, `vals`, `boost`, and `disabledElt`. For links and buttons with an `href`, `get` defaults to the `href`, so the page still works without JavaScript. 422 responses are swapped too, so a form with error messages can come back as an HTML fragment.
+
+In a handler, tell htmx requests apart from normal visits:
+
+```ts
+import { flash, fragment, hxRedirect, htmxTarget, isHtmx, renderToString } from "zusantara";
+
+export async function GET(ctx: ZenContext) {
+  const rows = await findProducts(ctx.query.q);
+  if (htmxTarget(ctx) === "results") return fragment(renderToString(h(ProductTable, { rows })));
+  return appPage(ctx, { title: "Products", active: "/products" }, h(Search, { action: "/products", hx: { target: "#results" } }), h("div", { id: "results" }, h(ProductTable, { rows })));
+}
+
+export async function POST(ctx: ZenContext) {
+  // ...save
+  flash(ctx, "Product saved.");
+  return hxRedirect(ctx, "/products"); // htmx: navigates without a full reload; without htmx: a 303 redirect
+}
+```
+
+`fragment()` adds `Vary: HX-Request` so caches never mix fragments with full pages, and `hxHeaders({ trigger, pushUrl, retarget, reswap, refresh })` builds the other htmx response headers.
+
+**Components for data.** `DataTable` is a table with sort links in the column headers (`aria-sort`) and a card layout on phones. `InlineEdit` changes one value right in a table cell (text, number, date, select, or switch) and saves it when the value changes. `Combobox` is a choice with server-side search, for lists too long for a `Select`. All three power the [admin panel](admin.html), and you can use them on your own pages.
+
 ## Messages after a redirect (flash)
 
 `flash(ctx, message)` stores a message to show once on the next page, and `takeFlash(ctx)` takes it. The message lives in the session when the `session()` middleware is installed, otherwise in a short-lived `zen_flash` cookie:
@@ -266,6 +302,6 @@ A new project from `npm create zusantara` (the **api** template) comes with:
 | `/dashboard` | a summary (notes, activity this week, users), recent notes, and ideas for what to build next |
 | `/notes` | an example of user-owned data: write, search, and list notes (each user only sees their own) |
 | `/notes/:id` | edit and delete a note |
-| `/admin/users` | users and their roles (admins only) |
+| `/admin` | [admin panel](admin.html) for users and notes: dashboard, search, filters, edit in place (admins only) |
 
 All of these pages live in `src/app/routes/` and are yours to change. `src/app/lib/ui.ts` contains `appPage()` (the frame with top navigation) and `APP_NAME`. Zusantara AI uses this kit too when you ask for a new page, e.g. *"build a booking schedule page for signed-in users"*.

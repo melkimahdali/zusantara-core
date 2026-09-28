@@ -2,6 +2,8 @@ import { requestOverride } from "../core/devtrace.js";
 import { ZUSANTARA_VERSION } from "../core/devpage/theme.js";
 import { escapeHtml, h, raw, renderToString, type Child } from "../core/view.js";
 import { getLocale, intlLocale, parseLocale, t } from "../i18n/index.js";
+import { HTMX_VERSION } from "./htmx.gen.js";
+import { hxAttrs, usesHtmx, type HxProps } from "./hx.js";
 import { activeTheme } from "./theme.js";
 import type { WithChildren } from "./types.js";
 
@@ -26,16 +28,39 @@ export interface PageOptions {
    * formulir dikirim (mencegah kirim ganda). Halaman tetap berfungsi penuh tanpa JavaScript.
    */
   script?: boolean;
+  /**
+   * Muat htmx (/_zusantara/htmx.js). Default otomatis: dimuat bila halaman memakai atribut hx-*
+   * (mis. prop `hx` di komponen kit UI). `false` untuk tidak memuatnya sama sekali.
+   */
+  htmx?: boolean;
 }
 
 /**
  * Skrip kecil bawaan page(): tombol kirim terkunci selama formulir dikirim (dipulihkan bila halaman
- * dikembalikan dari cache lewat tombol Back), tombol Tampilkan pada password, pratinjau gambar yang
- * baru dipilih di FileInput, dialog `open`, tooltip untuk pembaca layar, toast yang hilang sendiri,
- * tombol Salin di CodeBlock, dan menutup menu tarik-turun dengan klik di luar atau Esc. Semuanya
- * hanya menambah kenyamanan; halaman berfungsi tanpanya.
+ * dikembalikan dari cache lewat tombol Back atau setelah permintaan htmx selesai), tombol Tampilkan
+ * pada password, pratinjau gambar yang baru dipilih di FileInput, dialog `open`, tooltip untuk pembaca
+ * layar, toast yang hilang sendiri, tombol Salin di CodeBlock, dan menutup menu tarik-turun dengan
+ * klik di luar atau Esc. Isi baru dari htmx ikut disiapkan (event htmx:load), dan skrip tidak
+ * terpasang dua kali bila halaman dimuat ulang lewat htmx. Semuanya hanya menambah kenyamanan; halaman
+ * berfungsi tanpanya.
  */
-const FORM_SCRIPT = `document.addEventListener("submit",function(e){var b=e.submitter||e.target.querySelector("button[type=submit]");if(!b||b.getAttribute("aria-busy")==="true"||e.defaultPrevented)return;b.setAttribute("aria-busy","true");if(b.dataset.loading){b.dataset.label=b.textContent;b.textContent=b.dataset.loading}setTimeout(function(){b.disabled=true})});addEventListener("pageshow",function(e){if(!e.persisted)return;document.querySelectorAll("button[aria-busy=true]").forEach(function(b){b.disabled=false;b.removeAttribute("aria-busy");if(b.dataset.label)b.textContent=b.dataset.label})});document.querySelectorAll("[data-zu-reveal]").forEach(function(b){var i=document.getElementById(b.getAttribute("data-zu-reveal"));if(!i)return;b.hidden=false;b.addEventListener("click",function(){var s=i.type==="password";i.type=s?"text":"password";b.setAttribute("aria-pressed",String(s));b.textContent=s?b.dataset.hide:b.dataset.show})});document.addEventListener("change",function(e){var i=e.target;if(!i.matches||!i.matches("input[type=file][data-zu-preview]"))return;var img=document.getElementById(i.getAttribute("data-zu-preview")),f=i.files&&i.files[0];if(img&&f&&/^image\\//.test(f.type)){img.src=URL.createObjectURL(f);img.hidden=false}});document.querySelectorAll("[data-zu-open]").forEach(function(d){try{d.showPopover()}catch(e){}});document.querySelectorAll("[data-zu-tip]").forEach(function(w){var f=w.querySelector("a,button,input,select,textarea,[tabindex]");if(!f){f=w;w.tabIndex=0}f.setAttribute("aria-describedby",w.getAttribute("data-zu-tip"))});document.querySelectorAll(".zu-toast").forEach(function(t){var b=t.querySelector("[data-zu-dismiss]");function hide(){t.classList.add("hide");setTimeout(function(){var r=t.parentNode;t.remove();if(r&&!r.children.length)r.remove()},220)}if(b){b.hidden=false;b.addEventListener("click",hide)}var s=Number(t.getAttribute("data-zu-timeout"));if(s>0)setTimeout(hide,s*1000)});document.querySelectorAll("[data-zu-copy]").forEach(function(b){if(!navigator.clipboard)return;b.hidden=false;var l=b.textContent;b.addEventListener("click",function(){var c=b.closest("figure").querySelector("code");navigator.clipboard.writeText(c.textContent).then(function(){b.textContent=b.dataset.done;setTimeout(function(){b.textContent=l},1500)})})});document.querySelectorAll("[data-zu-step]").forEach(function(b){var i=document.getElementById(b.getAttribute("aria-controls"));if(!i)return;b.hidden=false;b.addEventListener("click",function(){var d=Number(b.getAttribute("data-zu-step")),v=(Number(i.value)||0)+d,lo=i.min===""?-Infinity:Number(i.min),hi=i.max===""?Infinity:Number(i.max);i.value=String(Math.min(hi,Math.max(lo,v)));i.dispatchEvent(new Event("change",{bubbles:true}))})});function zuShut(t){document.querySelectorAll("details.zu-dropdown[open],details.zu-navbar-menu[open]").forEach(function(d){if(!t||!d.contains(t))d.open=false})}document.addEventListener("click",function(e){zuShut(e.target)});document.addEventListener("keydown",function(e){if(e.key==="Escape")zuShut(null)});`;
+const FORM_SCRIPT = `(function(){if(window.zuInit)return;function q(r,s){var a=Array.prototype.slice.call(r.querySelectorAll(s));if(r.matches&&r.matches(s))a.unshift(r);return a}function unlock(r){q(r,"button[aria-busy=true]").forEach(function(b){b.disabled=false;b.removeAttribute("aria-busy");if(b.dataset.label)b.textContent=b.dataset.label})}function init(r){q(r,"[data-zu-reveal]").forEach(function(b){var i=document.getElementById(b.getAttribute("data-zu-reveal"));if(!i)return;b.hidden=false;b.addEventListener("click",function(){var s=i.type==="password";i.type=s?"text":"password";b.setAttribute("aria-pressed",String(s));b.textContent=s?b.dataset.hide:b.dataset.show})});q(r,"[data-zu-open]").forEach(function(d){try{d.showPopover()}catch(e){}});q(r,"[data-zu-tip]").forEach(function(w){var f=w.querySelector("a,button,input,select,textarea,[tabindex]");if(!f){f=w;w.tabIndex=0}f.setAttribute("aria-describedby",w.getAttribute("data-zu-tip"))});q(r,".zu-toast").forEach(function(t){var b=t.querySelector("[data-zu-dismiss]");function hide(){t.classList.add("hide");setTimeout(function(){var p=t.parentNode;t.remove();if(p&&!p.children.length)p.remove()},220)}if(b){b.hidden=false;b.addEventListener("click",hide)}var s=Number(t.getAttribute("data-zu-timeout"));if(s>0)setTimeout(hide,s*1000)});q(r,"[data-zu-copy]").forEach(function(b){if(!navigator.clipboard)return;b.hidden=false;var l=b.textContent;b.addEventListener("click",function(){var c=b.closest("figure").querySelector("code");navigator.clipboard.writeText(c.textContent).then(function(){b.textContent=b.dataset.done;setTimeout(function(){b.textContent=l},1500)})})});q(r,"[data-zu-step]").forEach(function(b){var i=document.getElementById(b.getAttribute("aria-controls"));if(!i)return;b.hidden=false;b.addEventListener("click",function(){var d=Number(b.getAttribute("data-zu-step")),v=(Number(i.value)||0)+d,lo=i.min===""?-Infinity:Number(i.min),hi=i.max===""?Infinity:Number(i.max);i.value=String(Math.min(hi,Math.max(lo,v)));i.dispatchEvent(new Event("change",{bubbles:true}))})})}window.zuInit=init;document.addEventListener("submit",function(e){var b=e.submitter||e.target.querySelector("button[type=submit]");if(!b||b.getAttribute("aria-busy")==="true"||e.defaultPrevented)return;b.setAttribute("aria-busy","true");if(b.dataset.loading){b.dataset.label=b.textContent;b.textContent=b.dataset.loading}setTimeout(function(){if(b.getAttribute("aria-busy")==="true")b.disabled=true})});addEventListener("pageshow",function(e){if(e.persisted)unlock(document)});document.addEventListener("htmx:afterRequest",function(e){unlock(e.detail.elt)});document.addEventListener("htmx:load",function(e){if(e.detail.elt!==document.body)init(e.detail.elt)});document.addEventListener("change",function(e){var i=e.target;if(!i.matches||!i.matches("input[type=file][data-zu-preview]"))return;var img=document.getElementById(i.getAttribute("data-zu-preview")),f=i.files&&i.files[0];if(img&&f&&/^image\\//.test(f.type)){img.src=URL.createObjectURL(f);img.hidden=false}});function zuShut(t){document.querySelectorAll("details.zu-dropdown[open],details.zu-navbar-menu[open]").forEach(function(d){if(!t||!d.contains(t))d.open=false})}document.addEventListener("click",function(e){zuShut(e.target)});document.addEventListener("keydown",function(e){if(e.key==="Escape")zuShut(null)});init(document)})();`;
+
+/**
+ * Pengaturan htmx bawaan: respons 422 (formulir tidak valid) tetap ditampilkan, sehingga formulir
+ * htmx bisa menampilkan pesan error dari server; 4xx/5xx lain tidak menimpa halaman.
+ */
+const HTMX_CONFIG = JSON.stringify({
+  // Gaya indikator ada di ui.css; tanpa ini htmx menyisipkan <style> sendiri ke halaman.
+  includeIndicatorStyles: false,
+  responseHandling: [
+    { code: "204", swap: false },
+    { code: "[23]..", swap: true },
+    { code: "422", swap: true },
+    { code: "[45]..", swap: false, error: true },
+  ],
+  historyCacheSize: 10,
+});
 
 /**
  * Dokumen HTML lengkap (dengan doctype) yang memuat stylesheet, font, dan tema kit UI. Semua halaman
@@ -48,6 +73,11 @@ export function page(options: PageOptions, ...body: Child[]): string {
   const { theme, css, hash } = activeTheme();
   // Varian gelap/terang dari view_page saat pengembangan menang atas tema.
   const forced = requestOverride()?.mode ?? (theme.mode === "auto" ? undefined : theme.mode);
+  const skip = h("a", { class: "zu-skip", href: "#konten" }, t(parseLocale(options.lang) ?? getLocale()).ui.skip);
+  const script = options.script === false ? null : h("script", null, raw(FORM_SCRIPT));
+  // Isi body dirender lebih dulu: htmx hanya dimuat bila halamannya memang memakai atribut hx-*.
+  const content = renderToString([skip, body, script]);
+  const withHtmx = options.htmx ?? usesHtmx(content);
   const head = [
     h("meta", { charset: "utf-8" }),
     h("meta", { name: "viewport", content: "width=device-width, initial-scale=1" }),
@@ -60,11 +90,11 @@ export function page(options: PageOptions, ...body: Child[]): string {
     theme.font === "jakarta" ? h("link", { rel: "preload", href: "/_zusantara/fonts/plus-jakarta-sans-latin.woff2", as: "font", type: "font/woff2", crossorigin: "anonymous" }) : null,
     h("link", { rel: "stylesheet", href: `/_zusantara/ui.css?v=${ZUSANTARA_VERSION}` }),
     css ? h("link", { rel: "stylesheet", href: `/_zusantara/theme.css?v=${hash}` }) : null,
+    withHtmx ? h("meta", { name: "htmx-config", content: HTMX_CONFIG }) : null,
+    withHtmx ? h("script", { src: `/_zusantara/htmx.js?v=${HTMX_VERSION}`, defer: true }) : null,
     options.head,
   ];
-  const skip = h("a", { class: "zu-skip", href: "#konten" }, t(parseLocale(options.lang) ?? getLocale()).ui.skip);
-  const script = options.script === false ? null : h("script", null, raw(FORM_SCRIPT));
-  return `<!doctype html>${renderToString(h("html", { lang: options.lang ?? getLocale(), "data-zu-mode": forced }, h("head", null, head), h("body", { class: "zu" }, skip, body, script)))}`;
+  return `<!doctype html>${renderToString(h("html", { lang: options.lang ?? getLocale(), "data-zu-mode": forced }, h("head", null, head), h("body", { class: "zu" }, raw(content))))}`;
 }
 
 
@@ -124,6 +154,8 @@ export function AuthCard({
 export interface NavItem {
   href: string;
   label: string;
+  /** Tanda kecil di samping label, mis. jumlah pesanan baru (angka 0 tidak ditampilkan). */
+  badge?: string | number;
   /** Awal kelompok menu baru (ditandai garis pemisah tipis sebelum item ini). */
   section?: string;
 }
@@ -155,7 +187,8 @@ export function AppShell({
   const links: Child[] = [];
   nav.forEach((item, i) => {
     if (item.section && i > 0) links.push(h("span", { class: "zu-nav-sep", role: "presentation", title: item.section }));
-    links.push(h("a", { href: item.href, "aria-current": item.href === active ? "page" : undefined }, item.label));
+    const badge = item.badge !== undefined && item.badge !== 0 && item.badge !== "" ? h("span", { class: "zu-nav-badge" }, String(item.badge)) : null;
+    links.push(h("a", { href: item.href, "aria-current": item.href === active ? "page" : undefined }, item.label, badge));
   });
   return [
     h(
@@ -284,6 +317,7 @@ export function Button({
   loading,
   opens,
   closes,
+  hx,
   children,
 }: WithChildren<{
   variant?: "primary" | "secondary" | "ghost" | "danger";
@@ -299,13 +333,15 @@ export function Button({
   opens?: string;
   /** id Dialog, Drawer, atau Popover yang ditutup tombol ini. */
   closes?: string;
+  /** Atribut htmx, mis. { post: "/keranjang", target: "#keranjang" }; untuk tombol ber-href, hx-get = href. */
+  hx?: HxProps;
 }>): Child {
   const cls = ["zu-btn", variant, small ? "small" : "", block ? "block" : ""].filter(Boolean).join(" ");
-  if (href) return h("a", { class: cls, href }, children);
+  if (href) return h("a", { class: cls, href, ...hxAttrs(hx, { get: href }) }, children);
   const target = opens ?? closes;
   return h(
     "button",
-    { class: cls, type: target ? "button" : type, name, value, "data-loading": loading, popovertarget: target, popovertargetaction: opens ? "show" : closes ? "hide" : undefined },
+    { class: cls, type: target ? "button" : type, name, value, "data-loading": loading, popovertarget: target, popovertargetaction: opens ? "show" : closes ? "hide" : undefined, ...hxAttrs(hx) },
     children,
   );
 }
@@ -317,10 +353,22 @@ export function Button({
  * @group form
  * @example h(PostButton, { action: `/produk/${p.id}/hapus`, confirm: `Hapus ${p.name}?` }, "Hapus")
  */
-export function PostButton({ action, confirm, variant = "danger", children }: WithChildren<{ action: string; confirm?: string; variant?: "primary" | "secondary" | "ghost" | "danger" }>): Child {
+export function PostButton({
+  action,
+  confirm,
+  variant = "danger",
+  hx,
+  children,
+}: WithChildren<{
+  action: string;
+  confirm?: string;
+  variant?: "primary" | "secondary" | "ghost" | "danger";
+  /** Kirim lewat htmx, mis. { target: "closest tr", swap: "outerHTML" } untuk menghapus baris tanpa muat ulang (hx-post = action). */
+  hx?: HxProps;
+}>): Child {
   return h(
     "form",
-    { class: "zu-inline", method: "post", action },
+    { class: "zu-inline", method: "post", action, ...hxAttrs(hx, { post: action }) },
     confirm ? raw(`<button class="zu-btn ${variant} small" type="submit" onclick="return confirm(${escapeHtml(JSON.stringify(confirm))})">${renderToString(children)}</button>`) : h(Button, { variant, small: true }, children),
   );
 }
@@ -404,10 +452,20 @@ export function Search({
   value,
   label = t().ui.search,
   placeholder = t().ui.searchPlaceholder,
-}: WithChildren<{ action: string; name?: string; value?: string; label?: string; placeholder?: string }>): Child {
+  hx,
+}: WithChildren<{
+  action: string;
+  name?: string;
+  value?: string;
+  label?: string;
+  placeholder?: string;
+  /** Hasil diperbarui sambil mengetik, mis. { target: "#hasil", pushUrl: true }. Default trigger: saat mengetik (jeda 300 ms) dan saat dikirim. */
+  hx?: HxProps;
+}>): Child {
+  const live = hx ? { trigger: "input changed delay:300ms from:find input, search from:find input, submit", ...hx } : undefined;
   return h(
     "form",
-    { class: "zu-search", method: "get", action, role: "search" },
+    { class: "zu-search", method: "get", action, role: "search", ...hxAttrs(live, { get: action }) },
     h("input", { class: "zu-input", type: "search", name, value, placeholder, "aria-label": label }),
     value ? h("a", { class: "zu-link", href: action }, t().ui.clearSearch) : null,
   );
@@ -434,6 +492,7 @@ export function rupiah(value: number): string {
 }
 
 export { UI_CSS } from "./styles.js";
+export type { HxProps } from "./hx.js";
 export * from "./layout.js";
 export * from "./forms.js";
 export * from "./nav.js";
@@ -442,6 +501,7 @@ export * from "./feedback.js";
 export * from "./data.js";
 export * from "./public.js";
 export * from "./commerce.js";
+export * from "./table.js";
 export { StatusPage, statusPage } from "./status.js";
 export { flash, takeFlash, type Flash } from "../core/flash.js";
 export type { Align, Gap, Justify } from "./types.js";

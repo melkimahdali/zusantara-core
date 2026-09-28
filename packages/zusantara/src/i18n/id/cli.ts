@@ -35,6 +35,9 @@ Perintah manual:
   zusantara make:route <path> [--methods GET,POST] Buat file route baru, mis. api/events/[id]
   zusantara make:middleware <nama>                 Buat file middleware baru
   zusantara make:job <nama> [--schedule "<cron>"]  Buat file job baru, mis. kirim-laporan
+  zusantara make:admin <tabel...> | --all          Panel admin dari schema database (/admin); aman dijalankan
+                                                   ulang setelah schema berubah
+  zusantara describe [--json]                      Manifest aplikasi: route, tabel, admin, job, plugin
   zusantara view <path> [--mobile|--tablet] [--dark] [--lang en] [--screenshot] [--text "a,b"]
                                                    Lihat halaman, periksa tampilan, dan beri skor (browser bila ada tab)
   zusantara requests [id] [--path /produk] [--json] Request terakhir di server dev: waktu, query, N+1, session, log

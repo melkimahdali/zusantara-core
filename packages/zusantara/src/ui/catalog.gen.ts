@@ -495,6 +495,11 @@ export const UI_CATALOG: CatalogEntry[] = [
         "name": "label",
         "type": "string",
         "required": false
+      },
+      {
+        "name": "hx",
+        "type": "HxProps",
+        "required": false
       }
     ]
   },
@@ -519,6 +524,11 @@ export const UI_CATALOG: CatalogEntry[] = [
       {
         "name": "href",
         "type": "string",
+        "required": false
+      },
+      {
+        "name": "hx",
+        "type": "HxProps",
         "required": false
       }
     ]
@@ -640,6 +650,17 @@ export const UI_CATALOG: CatalogEntry[] = [
         "name": "upload",
         "type": "boolean",
         "required": false
+      },
+      {
+        "name": "id",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "hx",
+        "type": "HxProps",
+        "required": false,
+        "doc": "Kirim lewat htmx tanpa muat ulang halaman, mis. { target: \"this\", swap: \"outerHTML\" } (hx-post/hx-get = action)."
       }
     ]
   },
@@ -773,6 +794,12 @@ export const UI_CATALOG: CatalogEntry[] = [
         "type": "boolean",
         "required": false,
         "doc": "Tombol Tampilkan/Sembunyikan untuk password (default true; butuh skrip bawaan page())."
+      },
+      {
+        "name": "hx",
+        "type": "HxProps",
+        "required": false,
+        "doc": "Atribut htmx di input, mis. { get: \"/cek-email\", trigger: \"change\", target: \"#email-info\" }."
       }
     ]
   },
@@ -839,6 +866,12 @@ export const UI_CATALOG: CatalogEntry[] = [
         "name": "autofocus",
         "type": "boolean",
         "required": false
+      },
+      {
+        "name": "hx",
+        "type": "HxProps",
+        "required": false,
+        "doc": "Atribut htmx di select, mis. { get: \"/kota\", trigger: \"change\", target: \"#kota\" }."
       }
     ]
   },
@@ -888,6 +921,11 @@ export const UI_CATALOG: CatalogEntry[] = [
       {
         "name": "disabled",
         "type": "boolean",
+        "required": false
+      },
+      {
+        "name": "hx",
+        "type": "HxProps",
         "required": false
       }
     ]
@@ -1038,6 +1076,11 @@ export const UI_CATALOG: CatalogEntry[] = [
         "name": "disabled",
         "type": "boolean",
         "required": false
+      },
+      {
+        "name": "hx",
+        "type": "HxProps",
+        "required": false
       }
     ]
   },
@@ -1130,6 +1173,107 @@ export const UI_CATALOG: CatalogEntry[] = [
     ]
   },
   {
+    "name": "ComboboxOptions",
+    "group": "form",
+    "kind": "component",
+    "id": "Daftar pilihan hasil pencarian untuk Combobox. Kembalikan ini dari route `source` Combobox: pilihan yang sedang terpilih (`value`) selalu ikut tampil agar tidak hilang saat mencari.",
+    "en": "List of search results for a Combobox. Return this from the Combobox `source` route: the currently selected option (`value`) always stays in the list so it is not lost while searching.",
+    "example": "fragment(renderToString(h(ComboboxOptions, { name: \"userId\", value: ctx.query.userId, options: users.map((u) => ({ value: u.id, label: u.name, hint: u.email })) })))",
+    "props": [
+      {
+        "name": "name",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "options",
+        "type": "ComboOption[]",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "string | number | string[] | null",
+        "required": false,
+        "doc": "Nilai yang sedang terpilih."
+      },
+      {
+        "name": "selected",
+        "type": "ComboOption",
+        "required": false,
+        "doc": "Label pilihan terpilih bila tidak ada di `options` (mis. hasil pencarian lain)."
+      },
+      {
+        "name": "allowEmpty",
+        "type": "boolean",
+        "required": false,
+        "doc": "Tambah pilihan \"Tidak ada\" (nilai kosong) untuk kolom yang boleh kosong."
+      }
+    ]
+  },
+  {
+    "name": "Combobox",
+    "group": "form",
+    "kind": "component",
+    "id": "Pilih satu data dari daftar panjang dengan pencarian di server (mis. pelanggan dari ribuan data). Saat mengetik, htmx meminta `source?q=...&name=...` dan menampilkan hasilnya (balas dengan ComboboxOptions). Pilihannya berupa tombol radio biasa, jadi nilai terkirim bersama formulir dan tetap bisa dipilih tanpa JavaScript dari `options` awal.",
+    "en": "Pick one record from a long list with a server-side search (e.g. a customer out of thousands). While typing, htmx requests `source?q=...&name=...` and shows the result (reply with ComboboxOptions). The choices are plain radio buttons, so the value is sent with the form and can still be picked without JavaScript from the initial `options`.",
+    "example": "h(Combobox, { name: \"customerId\", label: \"Pelanggan\", source: \"/pelanggan/pilihan\", value: order.customerId, selected: { value: customer.id, label: customer.name }, options: recent })",
+    "props": [
+      {
+        "name": "name",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "label",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "source",
+        "type": "string",
+        "required": true,
+        "doc": "URL pencarian yang membalas ComboboxOptions; menerima query `q`, `name`, dan nilai terpilih."
+      },
+      {
+        "name": "options",
+        "type": "ComboOption[]",
+        "required": false,
+        "doc": "Pilihan awal (mis. 10 data terbaru)."
+      },
+      {
+        "name": "value",
+        "type": "string | number | null",
+        "required": false
+      },
+      {
+        "name": "selected",
+        "type": "ComboOption",
+        "required": false,
+        "doc": "Label nilai terpilih bila tidak ada di `options`."
+      },
+      {
+        "name": "placeholder",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "required",
+        "type": "boolean",
+        "required": false
+      },
+      {
+        "name": "error",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "hint",
+        "type": "string",
+        "required": false
+      }
+    ]
+  },
+  {
     "name": "Button",
     "group": "form",
     "kind": "component",
@@ -1189,6 +1333,12 @@ export const UI_CATALOG: CatalogEntry[] = [
         "type": "string",
         "required": false,
         "doc": "id Dialog, Drawer, atau Popover yang ditutup tombol ini."
+      },
+      {
+        "name": "hx",
+        "type": "HxProps",
+        "required": false,
+        "doc": "Atribut htmx, mis. { post: \"/keranjang\", target: \"#keranjang\" }; untuk tombol ber-href, hx-get = href."
       }
     ]
   },
@@ -1214,6 +1364,12 @@ export const UI_CATALOG: CatalogEntry[] = [
         "name": "variant",
         "type": "\"primary\" | \"secondary\" | \"ghost\" | \"danger\"",
         "required": false
+      },
+      {
+        "name": "hx",
+        "type": "HxProps",
+        "required": false,
+        "doc": "Kirim lewat htmx, mis. { target: \"closest tr\", swap: \"outerHTML\" } untuk menghapus baris tanpa muat ulang (hx-post = action)."
       }
     ]
   },
@@ -1249,6 +1405,12 @@ export const UI_CATALOG: CatalogEntry[] = [
         "name": "placeholder",
         "type": "string",
         "required": false
+      },
+      {
+        "name": "hx",
+        "type": "HxProps",
+        "required": false,
+        "doc": "Hasil diperbarui sambil mengetik, mis. { target: \"#hasil\", pushUrl: true }. Default trigger: saat mengetik (jeda 300 ms) dan saat dikirim."
       }
     ]
   },
@@ -1751,6 +1913,99 @@ export const UI_CATALOG: CatalogEntry[] = [
       },
       {
         "name": "today",
+        "type": "string",
+        "required": false
+      }
+    ]
+  },
+  {
+    "name": "DataTable",
+    "group": "data",
+    "kind": "component",
+    "id": "Tabel data dengan urutan kolom, sel yang bisa diubah langsung, dan tampilan kartu di ponsel. `sortHref` memakai `{key}` dan `{dir}` (default `?sort={key}&dir={dir}`); klik kolom yang sama membalik arah urutan. `hx` memuat hasil urutan lewat htmx, mis. { target: \"#hasil\", pushUrl: true }.",
+    "en": "Data table with sortable columns, cells that can be edited in place, and a card view on phones. `sortHref` uses `{key}` and `{dir}` (default `?sort={key}&dir={dir}`); clicking the same column flips the order. `hx` loads the sorted result through htmx, e.g. { target: \"#results\", pushUrl: true }.",
+    "example": "h(DataTable, { columns: [{ key: \"name\", label: \"Nama\", sortable: true }, { key: \"price\", label: \"Harga\", align: \"num\", sortable: true }], rows: products.map((p) => [p.name, money(p.price)]), sort: { key: \"name\", dir: \"asc\" }, sortHref: \"/produk?sort={key}&dir={dir}\" })",
+    "props": [
+      {
+        "name": "columns",
+        "type": "DataColumn[]",
+        "required": true
+      },
+      {
+        "name": "rows",
+        "type": "Child[][]",
+        "required": true
+      },
+      {
+        "name": "sort",
+        "type": "DataSort",
+        "required": false
+      },
+      {
+        "name": "sortHref",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "empty",
+        "type": "Child",
+        "required": false
+      },
+      {
+        "name": "caption",
+        "type": "string",
+        "required": false,
+        "doc": "Judul tabel untuk pembaca layar."
+      },
+      {
+        "name": "hx",
+        "type": "HxProps",
+        "required": false
+      }
+    ]
+  },
+  {
+    "name": "InlineEdit",
+    "group": "data",
+    "kind": "component",
+    "id": "Nilai di sel tabel yang bisa diubah langsung: berubah = tersimpan (POST ke `action` lewat htmx, lalu sel diganti dengan respons server). Tanpa JavaScript muncul tombol Simpan kecil. Server membalas dengan InlineEdit yang sama (dengan `error` bila tidak valid).",
+    "en": "A table-cell value that can be edited in place: a change saves it (POST to `action` through htmx, then the cell is replaced with the server's response). Without JavaScript a small Save button shows. The server replies with the same InlineEdit (with `error` when invalid).",
+    "example": "h(InlineEdit, { action: `/admin/products/${p.id}/field/stock`, name: \"stock\", label: \"Stok\", type: \"number\", value: p.stock })",
+    "props": [
+      {
+        "name": "action",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "label",
+        "type": "string",
+        "required": true,
+        "doc": "Label untuk pembaca layar (tidak tampil)."
+      },
+      {
+        "name": "type",
+        "type": "\"text\" | \"number\" | \"date\" | \"select\" | \"switch\"",
+        "required": false
+      },
+      {
+        "name": "value",
+        "type": "string | number | boolean | null",
+        "required": false
+      },
+      {
+        "name": "options",
+        "type": "(string | { value: string; label: string })[]",
+        "required": false,
+        "doc": "Pilihan untuk type \"select\"."
+      },
+      {
+        "name": "error",
         "type": "string",
         "required": false
       }
