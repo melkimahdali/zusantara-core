@@ -497,7 +497,7 @@ export function Combobox(
   return h(
     "fieldset",
     { class: "zu-fieldset zu-combobox", id, "aria-describedby": fb.describedBy },
-    h("legend", null, props.label, props.required ? h("span", { class: "zu-sr" }, " *") : null),
+    h("legend", null, props.label),
     h("input", {
       class: "zu-input",
       type: "search",

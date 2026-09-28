@@ -51,6 +51,8 @@ const FORM_SCRIPT = `(function(){if(window.zuInit)return;function q(r,s){var a=A
  * htmx bisa menampilkan pesan error dari server; 4xx/5xx lain tidak menimpa halaman.
  */
 const HTMX_CONFIG = JSON.stringify({
+  // Gaya indikator ada di ui.css; tanpa ini htmx menyisipkan <style> sendiri ke halaman.
+  includeIndicatorStyles: false,
   responseHandling: [
     { code: "204", swap: false },
     { code: "[23]..", swap: true },

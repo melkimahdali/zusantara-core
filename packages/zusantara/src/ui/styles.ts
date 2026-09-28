@@ -643,13 +643,17 @@ body.zu:has(.zu-bottomnav){padding-bottom:calc(64px + env(safe-area-inset-bottom
 .zu-sort{display:inline-flex;align-items:center;gap:6px;color:inherit;font:inherit;text-decoration:none}
 .zu-sort:hover{color:var(--zu-text);text-decoration:none}
 .zu-sort.asc,.zu-sort.desc{color:var(--zu-text)}
-.zu-sort-icon{font-size:11px;color:var(--zu-faint)}
+.zu-sort-icon{font-size:11px;color:var(--zu-muted)}
 .zu-sort.asc .zu-sort-icon,.zu-sort.desc .zu-sort-icon{color:var(--zu-accent)}
 .zu-datatable th.num .zu-sort{flex-direction:row-reverse}
 @media (max-width:640px){
 .zu-table-wrap:has(.zu-datatable){overflow:visible}
 .zu-datatable,.zu-datatable tbody,.zu-datatable tr,.zu-datatable td{display:block;width:100%}
-.zu-datatable thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+.zu-datatable thead{display:block;padding:10px 16px;border-bottom:1px solid var(--zu-border)}
+.zu-datatable thead tr{display:flex;flex-wrap:wrap;gap:6px 16px}
+.zu-datatable thead th{display:block;padding:0;border:0;background:none;font-size:13px;text-align:left}
+.zu-datatable thead th:not(:has(.zu-sort)){display:none}
+.zu-datatable th.num .zu-sort{flex-direction:row}
 .zu-datatable tbody tr{padding:12px 16px;border-bottom:1px solid var(--zu-border)}
 .zu-datatable tbody tr:last-child{border-bottom:0}
 .zu-datatable td{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:5px 0;border:0;text-align:right;min-height:30px}
