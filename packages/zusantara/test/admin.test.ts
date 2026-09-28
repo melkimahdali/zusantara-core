@@ -86,6 +86,12 @@ describe("admin: blok bertanda", () => {
     assert.equal(replaceBlock("tanpa blok", "x", "y").status, "missing");
     // Spasi di akhir baris dan CRLF tidak dihitung sebagai perubahan.
     assert.equal(blockHash("a  \r\nb"), blockHash("a\nb"));
+    // File ber-CRLF (checkout git di Windows): isi sama tidak menyentuh file, isi baru tetap CRLF.
+    const crlf = `a\r\n${renderBlock("x", "satu\ndua").replace(/\n/g, "\r\n")}\r\nb\r\n`;
+    assert.deepEqual(replaceBlock(crlf, "x", "satu\ndua"), { status: "unchanged", text: crlf });
+    const crlfNext = replaceBlock(crlf, "x", "tiga\nempat");
+    assert.equal(crlfNext.status, "updated");
+    assert.doesNotMatch(crlfNext.text!.replace(/\r\n/g, ""), /\n/);
   });
 });
 

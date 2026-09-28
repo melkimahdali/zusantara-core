@@ -10,8 +10,8 @@ import { createHash } from "node:crypto";
  *   // zusantara:generated:end admin-resource
  */
 
-const BEGIN = (id: string) => new RegExp(`^([ \\t]*)// zusantara:generated:begin ${id}(?: sha256=([0-9a-f]+))?[ \\t]*\\r?$`, "m");
-const END = (id: string) => new RegExp(`^[ \\t]*// zusantara:generated:end ${id}[ \\t]*\\r?$`, "m");
+const BEGIN = (id: string) => new RegExp(`^([ \\t]*)// zusantara:generated:begin ${id}(?: sha256=([0-9a-f]+))?[ \\t]*(?=\\r?$)`, "m");
+const END = (id: string) => new RegExp(`^[ \\t]*// zusantara:generated:end ${id}[ \\t]*(?=\\r?$)`, "m");
 
 function normalize(body: string): string {
   return body
@@ -58,6 +58,9 @@ export function replaceBlock(text: string, id: string, body: string, force = fal
   const found = findBlock(text, id);
   if (!found) return { status: "missing" };
   if (found.edited && !force) return { status: "edited" };
-  const next = text.slice(0, found.start) + renderBlock(id, body) + text.slice(found.end);
+  // Isi sama (abaikan CRLF dan spasi di akhir baris): file tidak disentuh, mis. hasil checkout git di Windows.
+  if (!found.edited && found.hash !== undefined && normalize(found.body) === normalize(body)) return { status: "unchanged", text };
+  const eol = text.includes("\r\n") ? "\r\n" : "\n";
+  const next = text.slice(0, found.start) + renderBlock(id, body).replace(/\n/g, eol) + text.slice(found.end);
   return { status: next === text ? "unchanged" : "updated", text: next };
 }

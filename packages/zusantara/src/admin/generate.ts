@@ -238,13 +238,14 @@ function addNav(file: string): boolean {
   if (text.includes("adminNav")) return false;
   const fn = /function navFor\([^)]*\)[^{]*\{/.exec(text);
   if (!fn) return false;
-  const ret = text.indexOf("\n  return nav;", fn.index);
+  const eol = text.includes("\r\n") ? "\r\n" : "\n";
+  const ret = text.indexOf(`${eol}  return nav;`, fn.index);
   if (ret < 0) return false;
-  text = `${text.slice(0, ret)}\n  nav.push(...adminNav(user));${text.slice(ret)}`;
-  const imports = [...text.matchAll(/^import .*;$/gm)];
+  text = `${text.slice(0, ret)}${eol}  nav.push(...adminNav(user));${text.slice(ret)}`;
+  const imports = [...text.matchAll(/^import .*;(?=\r?$)/gm)];
   const last = imports.at(-1);
   const line = `import { adminNav } from "../admin/index.js";`;
-  text = last ? `${text.slice(0, last.index! + last[0].length)}\n${line}${text.slice(last.index! + last[0].length)}` : `${line}\n${text}`;
+  text = last ? `${text.slice(0, last.index! + last[0].length)}${eol}${line}${text.slice(last.index! + last[0].length)}` : `${line}${eol}${text}`;
   fs.writeFileSync(file, text);
   return true;
 }
