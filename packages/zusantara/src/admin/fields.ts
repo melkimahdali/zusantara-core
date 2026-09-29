@@ -51,6 +51,12 @@ export interface AdminField {
   types?: string[];
   /** Untuk image/file: batas ukuran, mis. "5mb" (default 5mb). */
   maxBytes?: string;
+  /** Kelompok di formulir, mis. "seo" (kolom meta/og dikelompokkan otomatis). */
+  group?: string;
+  /** Slug: dibuat dari field ini bila dikosongkan (otomatis untuk kolom `slug`). */
+  slugFrom?: string;
+  /** Terjemahan Inggris dari field lain, mis. titleEn untuk title (dikenali dari akhiran En / _en). */
+  translationOf?: string;
 }
 
 const LONG_TEXT = new Set(["body", "content", "description", "summary", "bio", "notes", "note", "message", "text", "details", "excerpt", "about", "isi", "deskripsi", "keterangan", "catatan", "pesan", "alamat", "address"]);

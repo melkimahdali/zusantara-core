@@ -32,6 +32,7 @@ Zusantara is a general-purpose web framework, not a framework for one kind of ap
 | 12d | 0.12.8 | Public pages and ready-made patterns: Hero, Pricing, Gallery, FAQ, Testimonial, ProductCard, cart, and full example pages |
 | 12e | 0.12.9 | Developer tools: per-request toolbar (queries, N+1), inspect mode, page score, tablet/dark/en variants, screenshots, recorded steps, voice input |
 | 13 | 0.13 | [Admin panel](admin.html) foundations with [htmx](https://htmx.org): re-runnable CRUD from the schema, sort/search/filter, permissions, admin dashboard, and `zusantara describe --json` |
+| 13b | 0.13.1 | Relations, content, and workflows in the admin panel: many-to-many, child records, CSV and Excel import/export, audit log, revisions, trash, draft and publish, SEO, media, settings, approvals, automations, sentence filters, global search, and `make:table`/`make:column` |
 
 Stages 10 and 11 shipped together in 0.12. Zentara was renamed Zusantara and the license became MIT in 0.12.10.
 
@@ -39,7 +40,6 @@ Stages 10 and 11 shipped together in 0.12. Zentara was renamed Zusantara and the
 
 | Stage | Version | Contents |
 |---|---|---|
-| 13b | 0.13.1 | Relations, content, and workflows: many-to-many, CSV/Excel, audit log, revisions, draft and publish, SEO, media, approvals, automations, schema editor |
 | 13c | 0.13.2 | Calendar/kanban/spreadsheet views, saved views, per-column and per-row permissions, user management, multi-tenant, API and webhooks, UU PDP |
 | 13d | 0.13.3 | Content and business templates: business, portfolio, blog, news, government, service provider, static, public |
 | 13e | 0.13.4 | Application and transaction templates: online shop, e-learning, file sharing, search engine, dynamic |
@@ -153,7 +153,7 @@ Compared with Django Admin, Laravel Filament/Nova, Rails Avo, Airtable/NocoDB, D
 - One AI request is carried out end to end, e.g. "add a status column to products": schema, migration, admin, tests, then a check with `view_page`.
 - `zusantara describe --json` prints the app manifest (routes, tables and columns, admin pages, jobs, plugins) without secret columns. Zusantara AI uses this manifest as its starting context, and it becomes the main tool of `zusantara mcp`.
 
-#### Stage 13b · 0.13.1: relations, content, and workflows
+#### Stage 13b · 0.13.1: relations, content, and workflows (done)
 
 - **Relations:** many-to-many (multiple choice) and child records directly on the parent page, e.g. order items on the order page.
 - **Bulk data:** bulk actions, CSV export and import, and Excel import with column mapping.

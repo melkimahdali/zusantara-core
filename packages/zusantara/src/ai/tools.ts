@@ -436,11 +436,11 @@ export const agentTools: AgentTool[] = [
     spec: {
       name: "zusantara",
       description:
-        "Run a Zusantara CLI command in the project, using the project's own zusantara install: routes (list routes), jobs (list background jobs, schedules, and queue), jobs:run <name> [--data <json>] (run one job now), make:route <path> [--methods GET,POST], make:middleware <name>, make:job <name> [--schedule \"<cron>\"], make:admin <table...> | --all [--force] (admin panel pages at /admin from the Drizzle schema, plus tests; re-running only updates the marked zusantara:generated blocks, a block edited by hand is skipped unless --force), describe --json (app manifest: routes, tables and columns without secret columns, admin resources and access, jobs, plugins, index suggestions), build, migrate:zusantara (move a project made with the old name Zentara to Zusantara: imports, package.json, config, .env, .zentara folder; run npm install afterwards), theme (show the UI kit theme) or theme --accent <color> [--radius none|sm|md|lg] [--font jakarta|system|serif|mono] [--mode auto|light|dark] [--reset] (change it in zusantara.config.mjs; colors: teal, blue, sky, cyan, indigo, violet, purple, pink, rose, red, orange, amber, gold, brown, green, emerald, slate, or #rrggbb). Use the database tool for db:*; the dev server is controlled by the developer.",
+        "Run a Zusantara CLI command in the project, using the project's own zusantara install: routes (list routes), jobs (list background jobs, schedules, and queue), jobs:run <name> [--data <json>] (run one job now), make:route <path> [--methods GET,POST], make:middleware <name>, make:job <name> [--schedule \"<cron>\"], make:admin <table...> | --all [--force] (admin panel pages at /admin from the Drizzle schema, plus tests; re-running only updates the marked zusantara:generated blocks, a block edited by hand is skipped unless --force), make:table <name> <column...> [--no-timestamps] [--dry-run] and make:column <table> <column> [--dry-run] (edit src/app/db/schema.ts, then db:generate, db:migrate, and make:admin in one step; a column is name:type[:required][:unique][:default=value] with type text, longtext, integer, number, boolean, date, datetime, json, enum(a,b), or relation(table), e.g. status:enum(draft,published):default=draft), describe --json (app manifest: routes, tables and columns without secret columns, admin resources and access, jobs, plugins, index suggestions), build, migrate:zusantara (move a project made with the old name Zentara to Zusantara: imports, package.json, config, .env, .zentara folder; run npm install afterwards), theme (show the UI kit theme) or theme --accent <color> [--radius none|sm|md|lg] [--font jakarta|system|serif|mono] [--mode auto|light|dark] [--reset] (change it in zusantara.config.mjs; colors: teal, blue, sky, cyan, indigo, violet, purple, pink, rose, red, orange, amber, gold, brown, green, emerald, slate, or #rrggbb). Use the database tool for db:*; the dev server is controlled by the developer.",
       inputSchema: {
         type: "object",
         properties: {
-          command: { type: "string", enum: ["routes", "jobs", "jobs:run", "make:route", "make:middleware", "make:job", "make:admin", "describe", "build", "theme", "migrate:zusantara"] },
+          command: { type: "string", enum: ["routes", "jobs", "jobs:run", "make:route", "make:middleware", "make:job", "make:admin", "make:table", "make:column", "describe", "build", "theme", "migrate:zusantara"] },
           args: { type: "array", items: { type: "string" }, description: "Extra arguments, e.g. [\"reports/daily\", \"--schedule\", \"0 7 * * *\"]" },
         },
         required: ["command"],
@@ -449,10 +449,11 @@ export const agentTools: AgentTool[] = [
     },
     async run(input, ctx) {
       const command = str(input, "command")!;
-      const risks: Record<string, Risk> = { routes: "read", jobs: "read", "jobs:run": "critical", "make:route": "write", "make:middleware": "write", "make:job": "write", "make:admin": "write", describe: "read", build: "write", theme: "write", "migrate:zusantara": "critical" };
+      const risks: Record<string, Risk> = { routes: "read", jobs: "read", "jobs:run": "critical", "make:route": "write", "make:middleware": "write", "make:job": "write", "make:admin": "write", "make:table": "critical", "make:column": "critical", describe: "read", build: "write", theme: "write", "migrate:zusantara": "critical" };
       const args0 = Array.isArray(input.args) ? input.args.map(String) : [];
       // `theme` tanpa argumen hanya membaca tema.
-      const risk = command === "theme" && args0.length === 0 ? "read" : risks[command];
+      // `theme` tanpa argumen hanya membaca tema; make:table/make:column dengan --dry-run hanya menampilkan kode.
+      const risk = (command === "theme" && args0.length === 0) || (/^make:(table|column)$/.test(command) && args0.includes("--dry-run")) ? "read" : risks[command];
       if (!risk) throw new ToolError(t().ai.tools.zusantaraArgInvalid(command));
       const args = Array.isArray(input.args) ? input.args.map(String) : [];
       for (const arg of args) {
@@ -472,7 +473,7 @@ export const agentTools: AgentTool[] = [
         return `${t().ai.tools.ok}: zusantara ${line}\n${changed.length ? changed.join("\n") : t().cli.migrateName.nothing}`;
       }
       // make:* membuat file di src/ (make:admin juga tes di test/): foto dulu isinya agar `zusantara undo` bisa mengembalikannya.
-      const dirs = [path.join(ctx.root, "src"), ...(command === "make:admin" ? [path.join(ctx.root, "test")] : [])];
+      const dirs = [path.join(ctx.root, "src"), ...(/^make:(admin|table|column)$/.test(command) ? [path.join(ctx.root, "test")] : []), ...(/^make:(table|column)$/.test(command) ? [path.join(ctx.root, "drizzle")] : [])];
       const watched = () => dirs.flatMap((d) => listFiles(ctx.root, d, 5_000, true));
       const snapshot = new Map<string, string>();
       if (command.startsWith("make:")) for (const f of watched()) snapshot.set(f, fs.readFileSync(path.join(ctx.root, f), "utf8"));

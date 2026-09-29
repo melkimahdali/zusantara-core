@@ -37,6 +37,9 @@ Perintah manual:
   zusantara make:job <nama> [--schedule "<cron>"]  Buat file job baru, mis. kirim-laporan
   zusantara make:admin <tabel...> | --all          Panel admin dari schema database (/admin); aman dijalankan
                                                    ulang setelah schema berubah
+  zusantara make:table <nama> <kolom...>           Tabel baru: schema, migrasi, dan halaman admin sekaligus,
+                                                   mis. make:table products name:text:required price:integer
+  zusantara make:column <tabel> <kolom>            Tambah kolom: schema, migrasi, dan halaman admin
   zusantara describe [--json]                      Manifest aplikasi: route, tabel, admin, job, plugin
   zusantara view <path> [--mobile|--tablet] [--dark] [--lang en] [--screenshot] [--text "a,b"]
                                                    Lihat halaman, periksa tampilan, dan beri skor (browser bila ada tab)

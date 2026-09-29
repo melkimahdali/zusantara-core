@@ -31,6 +31,8 @@ npm install -g zusantara
 | `zusantara make:middleware <nama>` | buat file middleware |
 | `zusantara make:job <nama> [--schedule "0 7 * * *"]` | buat file [job](jobs.html), opsional dengan jadwal cron |
 | `zusantara make:admin <tabel...> [--all] [--force]` | buat atau perbarui [panel admin](admin.html) dari schema database, lengkap dengan tes |
+| `zusantara make:table <nama> <kolom...> [--dry-run]` | buat tabel baru: schema, migrasi, dan [panel admin](admin.html#ubah-schema-dari-panel) sekaligus |
+| `zusantara make:column <tabel> <kolom> [--dry-run]` | tambah kolom: schema, migrasi, dan panel admin |
 | `zusantara describe [--json]` | manifest aplikasi: route, tabel dan kolom (tanpa kolom rahasia), panel admin, job, plugin, dan saran index |
 | `zusantara jobs [--json]` | daftar job, jadwal, jalan berikutnya, dan isi antrean |
 | `zusantara jobs:run <nama> [--data <json>]` | jalankan satu job sekarang, tanpa antrean |

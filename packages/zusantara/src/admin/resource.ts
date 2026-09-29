@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, getTableColumns, gte, inArray, lt, lte, or, sql, type Column, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, getTableColumns, gte, inArray, isNotNull, isNull, lt, lte, ne, or, sql, type Column, type SQL } from "drizzle-orm";
 import type { ZenContext } from "../core/context.js";
 import { t } from "../i18n/index.js";
 import { defaultFields, humanLabel, missingRequired, resourceName, titleKeyOf, type AdminField } from "./fields.js";
@@ -21,6 +21,92 @@ export interface AdminUser {
  */
 export type AccessRule = string[] | boolean | ((user: AdminUser, ctx: ZenContext) => boolean);
 export type AdminAction = "view" | "create" | "update" | "delete";
+
+/** Relasi many-to-many lewat tabel penghubung, mis. { tags: { through: postTags } }. Kolom penghubung dibaca dari foreign key-nya. */
+export interface ManyOption {
+  /** Tabel penghubung dengan dua foreign key: ke tabel ini dan ke tabel tujuan. */
+  through: AnyTable;
+  label?: string;
+  /** Kolom label di tabel tujuan (default: name/title/... seperti relasi biasa). */
+  labelKey?: string;
+  /** Tampil di daftar (default true). */
+  list?: boolean;
+}
+
+export interface ManyRelation {
+  name: string;
+  label: string;
+  through: AnyTable;
+  from: Column;
+  to: Column;
+  target: AnyTable;
+  targetKey: Column;
+  labelColumn: Column;
+  list: boolean;
+}
+
+/** Aturan pindah status (alur kerja dan persetujuan), mis. { from: "review", to: "published", roles: ["editor"] }. */
+export interface Transition {
+  from: string | string[];
+  to: string;
+  /** Teks tombol (default: nama status tujuan). */
+  label?: string;
+  /** Role yang boleh (default: semua yang boleh mengubah data). Pakai ini untuk persetujuan. */
+  roles?: string[];
+}
+
+export interface WorkflowOptions {
+  /** Kolom status (enum). Kolom ini hanya bisa diubah lewat tombol transisi. */
+  field: string;
+  transitions: Transition[];
+}
+
+/**
+ * Aksi khusus di halaman data dan aksi massal, mis. "Kirim ulang invoice". Isi `run` untuk kode
+ * sendiri, atau `job` untuk memasukkan job ke antrean dengan data { resource, ids }.
+ */
+export interface CustomAction {
+  name: string;
+  label: string;
+  run?: (rows: Record<string, unknown>[], ctx: ZenContext) => void | string | Promise<void | string>;
+  job?: string;
+  /** Pertanyaan konfirmasi sebelum dijalankan. */
+  confirm?: string;
+  /** Role yang boleh (default: yang boleh mengubah data). */
+  roles?: string[];
+  /** Ada di aksi massal (default true). */
+  bulk?: boolean;
+}
+
+/** Konten dengan status terbit: draf, terbit, dan terjadwal (terbit dengan waktu di masa depan). */
+export interface PublishOptions {
+  /** Kolom status (default: kolom enum "status" yang punya nilai published/terbit/live). */
+  field?: string;
+  /** Nilai untuk terbit dan draf. */
+  published?: string;
+  draft?: string;
+  /** Kolom waktu terbit (default publishedAt / published_at). */
+  at?: string;
+}
+
+export type AutomationEvent = "create" | "update" | "delete";
+
+/**
+ * Otomasi: "bila data dibuat atau berubah, kirim email, panggil webhook, atau jalankan job". Dijalankan
+ * setelah data tersimpan; kegagalan dicatat di log dan tidak membatalkan penyimpanan.
+ */
+export interface Automation {
+  on: AutomationEvent | AutomationEvent[];
+  /** Syarat tambahan, mis. (row, change) => row.status === "paid" && "status" in change.changes. */
+  when?: (row: Record<string, unknown>, change: { event: AutomationEvent; changes: Record<string, [unknown, unknown]> }) => boolean;
+  /** Kirim email (teks boleh memakai {kolom}, mis. "Pesanan {id} dibayar"). */
+  email?: { to: string; subject: string; text: string };
+  /** POST JSON { event, resource, id, row, changes } ke URL ini. */
+  webhook?: string;
+  /** Masukkan job ke antrean dengan data { event, resource, id, row, changes }. */
+  job?: string;
+  run?: (row: Record<string, unknown>, ctx: ZenContext | undefined, change: { event: AutomationEvent; changes: Record<string, [unknown, unknown]> }) => unknown;
+}
 
 export interface ResourceOptions {
   /** Objek tabel Drizzle. */
@@ -54,6 +140,24 @@ export interface ResourceOptions {
    * `throw new AdminError(pesan, field?)`. Pada ubah langsung di tabel, `values` hanya berisi satu kolom itu.
    */
   beforeSave?: (values: Record<string, unknown>, ctx: ZenContext, existing?: Record<string, unknown>) => void | Promise<void>;
+  /** Relasi many-to-many, mis. { tags: { through: postTags } }: pilihan ganda di formulir. */
+  many?: Record<string, ManyOption>;
+  /** Hapus lunak: kolom waktu hapus (default deletedAt / deleted_at bila ada), atau false untuk hapus permanen. */
+  softDelete?: string | false;
+  /** Catat perubahan di log audit dan riwayat revisi (default true). */
+  audit?: boolean;
+  /** Status draf, terbit, dan terjadwal (default: dikenali dari kolom status dan publishedAt), atau false. */
+  publish?: PublishOptions | false;
+  /** URL pratinjau data di situs, mis. (row) => `/blog/${row.slug}?preview=1`. */
+  previewUrl?: (row: Record<string, unknown>) => string;
+  /** Status dengan aturan transisi dan persetujuan per role. */
+  workflow?: WorkflowOptions;
+  /** Aksi khusus per data dan aksi massal. */
+  actions?: CustomAction[];
+  /** Otomasi setelah data dibuat, diubah, atau dihapus. */
+  automations?: Automation[];
+  /** Tampilkan data anak (tabel lain yang merujuk tabel ini) di halaman ubah (default true). */
+  children?: boolean;
 }
 
 /** Kesalahan yang ditampilkan ke pengguna di formulir admin (di bawah `field`, atau di atas formulir). */
@@ -77,6 +181,10 @@ export interface ListQuery {
   page?: number;
   /** Nilai filter: f_<field>, f_<field>_from, f_<field>_to. */
   filters: Record<string, string>;
+  /** Tampilkan data yang dihapus lunak (tempat sampah). */
+  trash?: boolean;
+  /** Hanya data dengan id ini (aksi massal dan ekspor pilihan). */
+  ids?: (string | number)[];
 }
 
 export interface ListResult {
@@ -110,6 +218,10 @@ export class AdminResource {
   readonly titleField: string;
   readonly perPage: number;
   readonly options: ResourceOptions;
+  readonly many: ManyRelation[];
+  /** Kunci kolom hapus lunak, bila ada. */
+  readonly softDeleteKey: string | undefined;
+  readonly publishing: { field: string; published: string; draft: string; at?: string } | undefined;
   private readonly columns: Record<string, Column>;
   private readonly creatable: boolean;
 
@@ -131,9 +243,132 @@ export class AdminResource {
       .filter((f) => this.columns[f.name] && !this.info.columns.find((c) => c.key === f.name)?.secret);
     const title = options.titleField ?? (options.fields ? undefined : titleKeyOf(this.info));
     this.titleField = title && this.columns[title] ? title : this.pk;
+    this.softDeleteKey = this.detectSoftDelete();
+    this.publishing = this.detectPublishing();
+    this.many = Object.entries(options.many ?? {}).map(([name, o]) => this.manyRelation(name, o));
+    this.enhanceFields(overrides);
     this.perPage = options.perPage ?? 20;
     // Tanpa keputusan eksplisit, tambah data hanya bila semua kolom wajib bisa diisi dari formulir.
     this.creatable = options.create ?? missingRequired(this.info, this.fields).length === 0;
+  }
+
+  private detectSoftDelete(): string | undefined {
+    if (this.options.softDelete === false) return undefined;
+    const key = this.options.softDelete ?? this.info.columns.find((c) => /^deleted(At|_at)$/.test(c.key) || c.name === "deleted_at")?.key;
+    if (!key || !this.columns[key]) return undefined;
+    if (this.columns[key]!.notNull) return undefined;
+    return key;
+  }
+
+  private detectPublishing(): AdminResource["publishing"] {
+    if (this.options.publish === false) return undefined;
+    const o = this.options.publish ?? {};
+    const status = o.field ?? this.info.columns.find((c) => /^(status|state)$/i.test(c.key) && c.enumValues)?.key;
+    const values = status ? (this.info.columns.find((c) => c.key === status)?.enumValues ?? this.field(status)?.options) : undefined;
+    if (!status || !values) return undefined;
+    const published = o.published ?? values.find((v) => /^(published|publish|terbit|live)$/i.test(v));
+    if (!published) return undefined;
+    const draft = o.draft ?? values.find((v) => /^(draft|draf)$/i.test(v)) ?? values.find((v) => v !== published)!;
+    const at = o.at ?? this.info.columns.find((c) => /^published(At|_at)$/.test(c.key) || c.name === "published_at")?.key;
+    return { field: status, published, draft, at: at && this.columns[at] ? at : undefined };
+  }
+
+  /** Penyesuaian otomatis: hapus lunak, slug, grup SEO, pasangan dua bahasa, dan kolom alur kerja. */
+  private enhanceFields(overrides: Record<string, Partial<AdminField>>): void {
+    const has = (name: string, key: keyof AdminField) => overrides[name] && key in overrides[name]!;
+    for (const f of this.fields) {
+      if (f.name === this.softDeleteKey) {
+        f.form = false;
+        f.list = false;
+        f.filter = false;
+        continue;
+      }
+      if (/^slug$/i.test(f.name) && f.type === "text" && f.slugFrom === undefined && this.titleField !== f.name && this.titleField !== this.pk) {
+        f.slugFrom = this.titleField;
+        if (!has(f.name, "required")) f.required = false;
+        f.hint ??= t().admin.slugHint;
+      }
+      if (f.group === undefined && /^(meta|seo|og)(_|[A-Z])/.test(f.name)) {
+        f.group = "seo";
+        const max = /description/i.test(f.name) ? 160 : /title/i.test(f.name) ? 60 : undefined;
+        if (max && !f.hint) f.hint = t().admin.seoLength(max);
+      }
+      const base = /^(.+?)(En|_en)$/.exec(f.name)?.[1];
+      if (base && f.translationOf === undefined) {
+        const source = this.fields.find((x) => x.name === base);
+        if (source) {
+          f.translationOf = base;
+          if (!has(f.name, "label")) f.label = `${source.label} (English)`;
+          if (!has(f.name, "list")) f.list = false;
+        }
+      }
+    }
+    const wf = this.options.workflow;
+    const wfField = wf ? this.field(wf.field) : undefined;
+    if (wfField) {
+      wfField.inline = false;
+      // Status baru mulai dari nilai bawaan kolom; sesudahnya hanya berubah lewat tombol transisi.
+      wfField.form = false;
+    }
+  }
+
+  private manyRelation(name: string, o: ManyOption): ManyRelation {
+    const cols = getTableColumns(o.through) as Record<string, Column>;
+    let from: Column | undefined;
+    let to: { column: Column; target: AnyTable; targetKey: Column } | undefined;
+    for (const [key, column] of Object.entries(cols)) {
+      const ref = foreignTableOf(o.through, key);
+      if (!ref) continue;
+      if (ref.table === this.table && !from) from = column;
+      else if (!to) to = { column, target: ref.table, targetKey: ref.column };
+    }
+    if (!from || !to) throw new Error(`zusantara/admin: ${name}: tabel penghubung butuh foreign key ke ${this.info.name} dan ke tabel tujuan`);
+    const targetInfo = inspectTable(to.target);
+    const targetCols = getTableColumns(to.target) as Record<string, Column>;
+    const labelKey = o.labelKey && targetCols[o.labelKey] ? o.labelKey : titleKeyOf(targetInfo);
+    return { name, label: o.label ?? humanLabel(name), through: o.through, from, to: to.column, target: to.target, targetKey: to.targetKey, labelColumn: targetCols[labelKey] ?? to.targetKey, list: o.list !== false };
+  }
+
+  /** Nilai "sekarang" untuk kolom waktu (Date, angka milidetik, atau teks ISO sesuai tipe kolom). */
+  nowFor(key: string): unknown {
+    const c = this.column(key);
+    if (c.dataType === "date") return new Date();
+    if (c.dataType === "number") return Date.now();
+    return new Date().toISOString();
+  }
+
+  /** Status terbit satu data: draft, scheduled (terbit dengan waktu di masa depan), atau published. */
+  publishState(row: Record<string, unknown>): "draft" | "scheduled" | "published" | undefined {
+    const p = this.publishing;
+    if (!p) return undefined;
+    if (row[p.field] !== p.published) return row[p.field] === p.draft ? "draft" : undefined;
+    const at = p.at ? row[p.at] : undefined;
+    if (at !== null && at !== undefined && at !== "") {
+      const time = at instanceof Date ? at.getTime() : typeof at === "number" ? at : Date.parse(String(at));
+      if (Number.isFinite(time) && time > Date.now()) return "scheduled";
+    }
+    return "published";
+  }
+
+  /** Transisi status yang boleh dipakai pengguna ini untuk data ini. */
+  transitionsFor(ctx: ZenContext, row: Record<string, unknown>): Transition[] {
+    const wf = this.options.workflow;
+    if (!wf || !this.can(ctx, "update")) return [];
+    const role = (ctx.state.user as AdminUser | undefined)?.role;
+    const current = String(row[wf.field] ?? "");
+    return wf.transitions.filter((tr) => {
+      const from = Array.isArray(tr.from) ? tr.from : [tr.from];
+      if (!from.includes(current) && !from.includes("*")) return false;
+      if (tr.to === current) return false;
+      return !tr.roles || (typeof role === "string" && tr.roles.includes(role));
+    });
+  }
+
+  /** Aksi khusus yang boleh dipakai pengguna ini. */
+  actionsFor(ctx: ZenContext, bulk = false): CustomAction[] {
+    if (!this.can(ctx, "update")) return [];
+    const role = (ctx.state.user as AdminUser | undefined)?.role;
+    return (this.options.actions ?? []).filter((a) => (!bulk || a.bulk !== false) && (!a.roles || (typeof role === "string" && a.roles.includes(role))));
   }
 
   /** Tabel tujuan setiap kolom relasi, untuk field bawaan (label relasi). */
@@ -206,8 +441,18 @@ export class AdminResource {
     return this.info.dialect === "postgres" ? sql`${column}::text ILIKE ${pattern} ESCAPE '\\'` : sql`${column} LIKE ${pattern} ESCAPE '\\'`;
   }
 
+  /** Syarat hapus lunak: data aktif saja, atau isi tempat sampah saja. */
+  private alive(trash = false): SQL | undefined {
+    if (!this.softDeleteKey) return undefined;
+    const col = this.column(this.softDeleteKey);
+    return trash ? isNotNull(col) : isNull(col);
+  }
+
   private where(query: ListQuery): SQL | undefined {
     const conds: SQL[] = [];
+    const alive = this.alive(query.trash);
+    if (alive) conds.push(alive);
+    if (query.ids) conds.push(query.ids.length ? inArray(this.column(this.pk), query.ids as never[]) : sql`1 = 0`);
     const q = query.q?.trim();
     if (q) {
       const parts = this.fields.filter((f) => f.search).map((f) => this.likeOp(this.column(f.name), q));
@@ -215,7 +460,8 @@ export class AdminResource {
       if (id !== undefined && /^\d+$/.test(q)) parts.push(eq(this.column(this.pk), id));
       if (parts.length) conds.push(or(...parts)!);
     }
-    for (const f of this.fields.filter((x) => x.filter)) {
+    // Filter relasi selalu dibaca dari URL (mis. tautan "lihat semua" data anak), walau tanpa filter: true.
+    for (const f of this.fields.filter((x) => x.filter || ["relation", "number", "date", "datetime"].includes(x.type))) {
       const col = this.column(f.name);
       const value = query.filters[`f_${f.name}`];
       if (f.type === "boolean" && (value === "1" || value === "0")) conds.push(eq(col, value === "1"));
@@ -283,16 +529,28 @@ export class AdminResource {
     return { rows, total, page, pages, sort, labels: await this.relationLabels(rows) };
   }
 
-  async count(): Promise<number> {
-    const [{ n }] = (await this.db.select({ n: count() }).from(this.table)) as [{ n: number }];
+  async count(trash = false): Promise<number> {
+    const [{ n }] = (await this.db.select({ n: count() }).from(this.table).where(this.alive(trash))) as [{ n: number }];
     return Number(n);
+  }
+
+  /** Semua data yang cocok dengan query (untuk ekspor dan aksi massal), paling banyak `limit`. */
+  async all(query: ListQuery, limit = 50_000): Promise<Record<string, unknown>[]> {
+    const sort = this.sortOf(query);
+    const col = this.column(sort.field);
+    return (await this.db
+      .select()
+      .from(this.table)
+      .where(this.where(query))
+      .orderBy(sort.dir === "desc" ? desc(col) : asc(col))
+      .limit(limit)) as Record<string, unknown>[];
   }
 
   /** Data terbaru untuk dasbor (kolom createdAt bila ada, selain itu primary key terbesar). */
   async recent(limit = 5): Promise<Record<string, unknown>[]> {
     const created = this.columns.createdAt ?? this.columns.created_at;
     const order = created ? [desc(created), desc(this.column(this.pk))] : [desc(this.column(this.pk))];
-    return (await this.db.select().from(this.table).orderBy(...order).limit(limit)) as Record<string, unknown>[];
+    return (await this.db.select().from(this.table).where(this.alive()).orderBy(...order).limit(limit)) as Record<string, unknown>[];
   }
 
   async find(id: string | number): Promise<Record<string, unknown> | undefined> {
@@ -311,8 +569,139 @@ export class AdminResource {
     return rows[0];
   }
 
-  async remove(id: string | number): Promise<void> {
+  /** Hapus: lunak (isi kolom waktu hapus) bila tabel punya kolomnya, selain itu permanen. */
+  async remove(id: string | number): Promise<"soft" | "hard"> {
+    if (this.softDeleteKey && !this.isDeleted((await this.find(id)) ?? {})) {
+      await this.db.update(this.table).set({ [this.softDeleteKey]: this.nowFor(this.softDeleteKey) }).where(eq(this.column(this.pk), id));
+      return "soft";
+    }
+    await this.destroy(id);
+    return "hard";
+  }
+
+  /** Hapus permanen. */
+  async destroy(id: string | number): Promise<void> {
     await this.db.delete(this.table).where(eq(this.column(this.pk), id));
+  }
+
+  /** Kembalikan data yang dihapus lunak. */
+  async restore(id: string | number): Promise<void> {
+    if (!this.softDeleteKey) return;
+    await this.db.update(this.table).set({ [this.softDeleteKey]: null }).where(eq(this.column(this.pk), id));
+  }
+
+  isDeleted(row: Record<string, unknown>): boolean {
+    const v = this.softDeleteKey ? row[this.softDeleteKey] : undefined;
+    return v !== null && v !== undefined && v !== "";
+  }
+
+  /**
+   * Nilai kolom dari salinan JSON (log audit): tanggal dikembalikan menjadi Date, kolom yang tidak ada
+   * dilewati. `withKey` ikut menyertakan primary key (untuk memulihkan data yang dihapus permanen).
+   */
+  fromSnapshot(snapshot: Record<string, unknown>, withKey = false): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(snapshot)) {
+      const c = this.columns[k];
+      if (!c || (k === this.pk && !withKey)) continue;
+      if (c.dataType === "date" && typeof v === "string") out[k] = new Date(v);
+      else if (c.dataType === "bigint" && typeof v === "string") out[k] = BigInt(v);
+      else out[k] = v;
+    }
+    return out;
+  }
+
+  /** Salinan data untuk log: tanpa kolom rahasia, kecuali `full` (untuk memulihkan data yang dihapus). */
+  snapshotOf(row: Record<string, unknown>, full = false): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
+    for (const c of this.info.columns) if (full || !c.secret) out[c.key] = row[c.key];
+    return out;
+  }
+
+  /** Kolom yang berubah (tanpa kolom rahasia): nama -> [sebelum, sesudah]. */
+  diff(before: Record<string, unknown> | undefined, after: Record<string, unknown>): Record<string, [unknown, unknown]> {
+    const norm = (v: unknown) => (v instanceof Date ? v.toISOString() : typeof v === "bigint" ? v.toString() : JSON.stringify(v ?? null));
+    const out: Record<string, [unknown, unknown]> = {};
+    for (const c of this.info.columns) {
+      if (c.secret || !(c.key in after)) continue;
+      const a = before?.[c.key];
+      const b = after[c.key];
+      if (norm(a) !== norm(b)) out[c.key] = [a ?? null, b ?? null];
+    }
+    return out;
+  }
+
+  /** Slug unik dari teks (mis. judul): "Kopi Susu" -> "kopi-susu", lalu "kopi-susu-2" bila sudah dipakai. */
+  async uniqueSlug(field: string, text: string, exceptId?: string | number): Promise<string> {
+    const base =
+      text
+        .normalize("NFKD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 80) || "data";
+    const col = this.column(field);
+    const pattern = `${base.replace(/[%_\\]/g, "\\$&")}%`;
+    const conds: SQL[] = [sql`${col} LIKE ${pattern} ESCAPE '\\'`];
+    if (exceptId !== undefined) conds.push(ne(this.column(this.pk), exceptId));
+    const taken = new Set(((await this.db.select({ s: col }).from(this.table).where(and(...conds))) as { s: unknown }[]).map((r) => String(r.s)));
+    if (!taken.has(base)) return base;
+    for (let i = 2; ; i++) if (!taken.has(`${base}-${i}`)) return `${base}-${i}`;
+  }
+
+  // ── Many-to-many ───────────────────────────────────────────────────────────
+
+  manyOf(name: string): ManyRelation | undefined {
+    return this.many.find((x) => x.name === name);
+  }
+
+  /** Id tujuan yang terpilih untuk satu data. */
+  async manyValues(name: string, id: string | number): Promise<string[]> {
+    const rel = this.manyOf(name)!;
+    const rows = (await this.db.select({ v: rel.to }).from(rel.through).where(eq(rel.from, id))) as { v: unknown }[];
+    return rows.map((r) => String(r.v));
+  }
+
+  /** Label tujuan per data untuk daftar: nama relasi -> (id data -> label). Satu query per relasi. */
+  async manyLabels(rows: Record<string, unknown>[]): Promise<Map<string, Map<string, string[]>>> {
+    const out = new Map<string, Map<string, string[]>>();
+    const ids = rows.map((r) => r[this.pk]).filter((v) => v !== null && v !== undefined);
+    for (const rel of this.many.filter((x) => x.list)) {
+      const map = new Map<string, string[]>();
+      if (ids.length) {
+        const found = (await this.db
+          .select({ f: rel.from, l: rel.labelColumn })
+          .from(rel.through)
+          .innerJoin(rel.target, eq(rel.to, rel.targetKey))
+          .where(inArray(rel.from, ids as never[]))
+          .orderBy(asc(rel.labelColumn))) as { f: unknown; l: unknown }[];
+        for (const r of found) {
+          const k = String(r.f);
+          map.set(k, [...(map.get(k) ?? []), String(r.l ?? "")]);
+        }
+      }
+      out.set(rel.name, map);
+    }
+    return out;
+  }
+
+  /** Pilihan tujuan untuk formulir (paling banyak 500, urut label). */
+  async manyOptions(name: string): Promise<{ value: string; label: string }[]> {
+    const rel = this.manyOf(name)!;
+    const rows = (await this.db.select({ k: rel.targetKey, l: rel.labelColumn }).from(rel.target).orderBy(asc(rel.labelColumn)).limit(500)) as { k: unknown; l: unknown }[];
+    return rows.map((r) => ({ value: String(r.k), label: String(r.l ?? r.k) }));
+  }
+
+  /** Ganti pilihan many-to-many satu data. */
+  async setMany(name: string, id: string | number, values: string[]): Promise<void> {
+    const rel = this.manyOf(name)!;
+    await this.db.delete(rel.through).where(eq(rel.from, id));
+    const unique = [...new Set(values.filter((v) => v !== ""))];
+    if (!unique.length) return;
+    const fromKey = Object.entries(getTableColumns(rel.through) as Record<string, Column>).find(([, c]) => c === rel.from)![0];
+    const toKey = Object.entries(getTableColumns(rel.through) as Record<string, Column>).find(([, c]) => c === rel.to)![0];
+    await this.db.insert(rel.through).values(unique.map((v) => ({ [fromKey]: id, [toKey]: this.coerceKey(rel.to, v) })));
   }
 
   /** Tabel tujuan dan kolom label untuk field relasi. */

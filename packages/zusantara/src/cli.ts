@@ -291,7 +291,7 @@ async function listRoutes(args: ParsedArgs, io: CliIO): Promise<number> {
 }
 
 const KNOWN_COMMANDS = new Set([
-  "help", "dev", "build", "start", "routes", "make:route", "make:middleware", "make:job", "make:admin", "describe", "ai", "ai:status", "ai:setup", "undo", "db:generate", "db:migrate", "db:seed", "lang", "jobs", "jobs:run", "view", "requests", "ai:log", "ui", "theme", "migrate:zusantara",
+  "help", "dev", "build", "start", "routes", "make:route", "make:middleware", "make:job", "make:admin", "make:table", "make:column", "describe", "ai", "ai:status", "ai:setup", "undo", "db:generate", "db:migrate", "db:seed", "lang", "jobs", "jobs:run", "view", "requests", "ai:log", "ui", "theme", "migrate:zusantara",
 ]);
 
 /** Bahasa CLI: env ZUSANTARA_LANG, lalu `locale` di zusantara.config.mjs, lalu preferensi global, lalu Indonesia. */
@@ -897,6 +897,49 @@ async function makeAdminCommand(args: ParsedArgs, io: CliIO): Promise<number> {
   }
 }
 
+/**
+ * `zusantara make:table <nama> <kolom...>` dan `make:column <tabel> <kolom>`: ubah schema.ts, lalu
+ * db:generate, db:migrate, dan make:admin untuk tabel itu. `--dry-run` hanya menampilkan kodenya.
+ */
+async function schemaCommand(command: "make:table" | "make:column", args: ParsedArgs, io: CliIO): Promise<number> {
+  const m = t().admin.schema;
+  const [, target, ...cols] = args.positional;
+  if (!target || !cols.length) {
+    io.err(command === "make:table" ? m.usageTable : m.usageColumn);
+    return 1;
+  }
+  let plan: import("./admin/schema-apply.js").SchemaPlan;
+  try {
+    const { parseColumnLines, planSchemaChange } = await import("./admin/schema-apply.js");
+    const columns = parseColumnLines(cols);
+    plan =
+      command === "make:table"
+        ? planSchemaChange(io.cwd, { kind: "table", table: { name: target, columns, timestamps: args.flags["no-timestamps"] !== true && args.flags.timestamps !== "false" } })
+        : planSchemaChange(io.cwd, { kind: "column", table: target, column: columns[0]! });
+  } catch (err) {
+    io.err((err as Error).message);
+    return 1;
+  }
+  if (args.flags["dry-run"]) {
+    io.out(m.dryRun);
+    for (const line of plan.added) io.out(`  ${line}`);
+    return 0;
+  }
+  const { writeSchemaPlan } = await import("./admin/schema-apply.js");
+  writeSchemaPlan(plan);
+  io.out(m.written(path.relative(io.cwd, plan.file).split(path.sep).join("/")));
+  for (const step of [["db:generate"], ["db:migrate"], ["make:admin", plan.exportName]]) {
+    io.out(m.step(step.join(" ")));
+    const code = await run(step, io);
+    if (code !== 0) {
+      io.err(m.stepFailed(step.join(" ")));
+      return code;
+    }
+  }
+  io.out(m.done(plan.exportName));
+  return 0;
+}
+
 /** `zusantara describe [--json]`: manifest aplikasi (route, tabel, admin, job, plugin) tanpa kolom rahasia. */
 async function describeCommand(args: ParsedArgs, io: CliIO): Promise<number> {
   try {
@@ -1009,6 +1052,9 @@ export async function run(argv: readonly string[], io: CliIO): Promise<number> {
       loadDotEnv(io.cwd);
       return command === "describe" ? describeCommand(args, io) : makeAdminCommand(args, io);
     }
+    case "make:table":
+    case "make:column":
+      return schemaCommand(command, args, io);
     case "routes":
       return listRoutes(args, io);
     case "make:route":

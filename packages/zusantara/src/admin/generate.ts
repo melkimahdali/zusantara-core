@@ -82,12 +82,33 @@ function resourceBlock(exportName: string, info: TableInfo, fields: AdminField[]
   ].join("\n");
 }
 
-function resourceFile(exportName: string, info: TableInfo, fields: AdminField[], create: boolean, name: string): string {
+/**
+ * Tabel penghubung many-to-many: dua foreign key (satu ke tabel ini) dan selain itu hanya id atau
+ * kolom waktu. Hasilnya: nama pilihan (export tabel tujuan) -> export tabel penghubung.
+ */
+function junctionsFor(info: TableInfo, byExport: Map<string, { info: TableInfo }>): { name: string; through: string }[] {
+  const out: { name: string; through: string }[] = [];
+  const exportOf = (table: string) => [...byExport].find(([, v]) => v.info.name === table)?.[0];
+  for (const [through, { info: j }] of byExport) {
+    const refs = j.columns.filter((c) => c.references);
+    if (refs.length !== 2 || j.name === info.name) continue;
+    const others = j.columns.filter((c) => !c.references && !(c.primary && c.key === "id") && !/^(created|updated)(At|_at)$/.test(c.key));
+    if (others.length) continue;
+    const own = refs.find((c) => c.references!.table === info.name);
+    const target = refs.find((c) => c !== own);
+    if (!own || !target || target.references!.table === info.name) continue;
+    const name = exportOf(target.references!.table);
+    if (name && !out.some((x) => x.name === name)) out.push({ name, through });
+  }
+  return out;
+}
+
+function resourceFile(exportName: string, info: TableInfo, fields: AdminField[], create: boolean, name: string, many: { name: string; through: string }[] = []): string {
   const g = t().admin.gen;
   return [
     `import { defineResource, type GeneratedResource } from "zusantara/admin";`,
     `import { db } from "../db/index.js";`,
-    `import { ${exportName} } from "../db/schema.js";`,
+    `import { ${[exportName, ...many.map((x) => x.through)].join(", ")} } from "../db/schema.js";`,
     "",
     renderBlock("admin-resource", resourceBlock(exportName, info, fields, create, name)),
     "",
@@ -99,6 +120,7 @@ function resourceFile(exportName: string, info: TableInfo, fields: AdminField[],
     `  access: { view: ["admin"], create: ["admin"], update: ["admin"], delete: ["admin"] },`,
     `  // ${g.overrides}`,
     "  overrides: {},",
+    ...(many.length ? [`  // ${g.many}`, `  many: { ${many.map((x) => `${x.name}: { through: ${x.through} }`).join(", ")} },`] : []),
     "});",
     "",
   ].join("\n");
@@ -316,7 +338,7 @@ export async function makeAdmin(root: string, names: string[], options: MakeAdmi
     const file = path.join(adminDir, `${name}.ts`);
     if (!fs.existsSync(file)) {
       noteCreate();
-      write(file, resourceFile(exportName, info, fields, create, name), true);
+      write(file, resourceFile(exportName, info, fields, create, name, junctionsFor(info, byExport)), true);
     } else {
       const text = fs.readFileSync(file, "utf8");
       const result = replaceBlock(text, "admin-resource", resourceBlock(exportName, info, fields, create, name), options.force);

@@ -38,6 +38,9 @@ Manual commands:
   zusantara make:job <name> [--schedule "<cron>"]  Create a job file, e.g. send-report
   zusantara make:admin <table...> | --all         Admin panel from the database schema (/admin); safe to run
                                                    again after the schema changes
+  zusantara make:table <name> <column...>          New table: schema, migration, and admin pages in one go,
+                                                   e.g. make:table products name:text:required price:integer
+  zusantara make:column <table> <column>           Add a column: schema, migration, and admin pages
   zusantara describe [--json]                      App manifest: routes, tables, admin, jobs, plugins
   zusantara view <path> [--mobile|--tablet] [--dark] [--lang en] [--screenshot] [--text "a,b"]
                                                    View a page, check its layout, and score it (in the browser when a tab is open)

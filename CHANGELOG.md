@@ -2,6 +2,24 @@
 
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.1.0/). Versi `zusantara` dan `create-zusantara` (sebelum 0.12.10: `zentara` dan `create-zentara`) selalu dinaikkan bersamaan.
 
+## [0.13.1]
+
+### Ditambahkan
+- **Relasi di panel admin:** many-to-many lewat tabel penghubung (`many: { tags: { through: postTags } }`, dikenali `make:admin`) dengan kotak centang di formulir dan tag di daftar, serta data anak di halaman induk (mis. item pesanan di halaman pesanan) dengan tombol tambah yang induknya sudah terisi. [Dokumentasi](https://zusantara.morixa.id/admin.html#relasi).
+- **Data massal:** aksi massal dengan konfirmasi jumlah, ekspor CSV sesuai filter, dan impor CSV/Excel (.xlsx) dengan pencocokan kolom dan pratinjau per baris sebelum disimpan. Pembaca Excel dibuat tanpa pustaka luar.
+- **Jejak data:** log audit (siapa mengubah apa, sebelum dan sesudah) di `/admin/_log` dan dasbor, riwayat revisi per data dengan diff dan tombol kembalikan versi, hapus lunak dengan tempat sampah, dan tombol **Urungkan** setelah menghapus (juga untuk tabel tanpa hapus lunak, dari salinan di log).
+- **Konten:** status draf, terbit, dan terjadwal dengan waktu terbit otomatis dan tombol pratinjau (`previewUrl`), slug otomatis yang unik, grup SEO untuk kolom `meta*`/`seo*`/`og*`, kolom dua bahasa (`titleEn` di samping `title`), pustaka media, dan halaman pengaturan situs yang dibaca dengan `await admin.settings()`.
+- **Alur kerja:** transisi status dengan persetujuan per role (`workflow`), aksi khusus per data dan massal yang menjalankan kode atau job (`actions`), catatan internal per data, dan halaman cetak/PDF.
+- **Otomasi** (`automations`): kirim email, panggil webhook, atau jalankan job saat data dibuat, diubah, atau dihapus, dengan syarat `when`.
+- **Filter dengan kalimat** Indonesia atau Inggris, mis. "dibuat bulan ini, harga di atas 100 ribu", yang diubah menjadi filter biasa di URL.
+- **Cari global** di semua tabel admin dengan **Ctrl+K**.
+- **Ubah schema tanpa menulis kode:** `zusantara make:table` dan `make:column` mengubah `schema.ts`, membuat dan menjalankan migrasi, lalu memperbarui panel admin dalam satu perintah. Halaman `/admin/_schema` (hanya saat pengembangan) melakukan hal yang sama lewat formulir dengan pratinjau dan persetujuan, dan Zusantara AI memakainya lewat tool `zusantara`.
+- `flash()` menerima tombol (argumen keempat), dan `Toast` menampilkannya. `testAdmin()` bisa mengirim beberapa nilai per field dan file (multipart).
+- Template `api`: halaman pengaturan situs di `/admin/_settings`.
+
+### Dihapus
+- Dukungan nama lama Zentara: perintah `zentara`, `zentara.config.*`, variabel `ZENTARA_*`, URL `/_zentara/*`, dan pemindahan folder `.zentara` otomatis. CLI memberi petunjuk bila proyek masih memakai nama lama; `zusantara migrate:zusantara` tetap tersedia, dan tabel antrean `zentara_jobs` tetap dipindah otomatis.
+
 ## [0.13.0]
 
 ### Ditambahkan

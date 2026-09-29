@@ -31,6 +31,8 @@ npm install -g zusantara
 | `zusantara make:middleware <name>` | create a middleware file |
 | `zusantara make:job <name> [--schedule "0 7 * * *"]` | create a [job](jobs.html) file, optionally with a cron schedule |
 | `zusantara make:admin <table...> [--all] [--force]` | create or refresh the [admin panel](admin.html) from the database schema, with tests |
+| `zusantara make:table <name> <column...> [--dry-run]` | create a table: schema, migration, and [admin panel](admin.html#editing-the-schema-from-the-panel) in one go |
+| `zusantara make:column <table> <column> [--dry-run]` | add a column: schema, migration, and admin panel |
 | `zusantara describe [--json]` | app manifest: routes, tables and columns (no secret columns), admin panel, jobs, plugins, and index suggestions |
 | `zusantara jobs [--json]` | list jobs, schedules, next runs, and queue counts |
 | `zusantara jobs:run <name> [--data <json>]` | run one job now, without the queue |
