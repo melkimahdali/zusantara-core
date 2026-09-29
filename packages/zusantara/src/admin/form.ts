@@ -64,6 +64,8 @@ export async function parseField(
     }
   }
   const raw = typeof entry === "string" ? entry.trim() : "";
+  // Slug kosong dibuat dari judul saat disimpan.
+  if (raw === "" && f.slugFrom) return { value: undefined, raw };
   if (raw === "") return empty(raw);
   switch (f.type) {
     case "number": {

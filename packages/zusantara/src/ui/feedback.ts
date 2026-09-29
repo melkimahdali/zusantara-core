@@ -29,8 +29,9 @@ export function Toast({
     { class: "zu-toasts" },
     h(
       "div",
-      { class: `zu-toast ${kind}`, role: kind === "error" ? "alert" : "status", "data-zu-timeout": timeout > 0 ? String(timeout) : undefined },
+      { class: `zu-toast ${kind}`, role: kind === "error" ? "alert" : "status", "data-zu-timeout": timeout > 0 ? String(flash?.action ? Math.max(timeout, 12) : timeout) : undefined },
       h("span", null, message),
+      flash?.action ? h("form", { class: "zu-inline zu-toast-action", method: "post", action: flash.action.action }, h("button", { class: "zu-btn ghost small", type: "submit" }, flash.action.label)) : null,
       h("button", { class: "zu-close", type: "button", "data-zu-dismiss": "", "aria-label": t().ui.close, hidden: true }, "×"),
     ),
   );

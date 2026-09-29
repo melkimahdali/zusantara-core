@@ -13,6 +13,14 @@ export const admin = defineAdmin({
   resources,
   // Kerangka halaman aplikasi, jadi panel admin memakai navigasi yang sama.
   layout: (ctx, options, ...children) => appPage(ctx, options, ...children),
+  // Halaman pengaturan situs di /admin/_settings. Baca di route dengan: const s = await admin.settings();
+  settings: {
+    fields: [
+      { name: "siteName", label: "Nama situs", default: "Aplikasi Saya" },
+      { name: "contactEmail", label: "Email kontak", type: "email" },
+      { name: "openingHours", label: "Jam buka", type: "textarea", hint: "Mis. Senin–Jumat 08.00–17.00" },
+    ],
+  },
 });
 
 /** Menu Admin untuk navigasi aplikasi (hanya muncul bagi pengguna yang punya akses). */

@@ -1,6 +1,6 @@
 {
   "name": "zusantara",
-  "version": "0.13.0",
+  "version": "0.13.1",
   "description": "Framework web TypeScript AI-driven asal Nusantara: routing berbasis file, auth, database, dan AI yang membangun aplikasi dari bahasa sehari-hari.",
   "keywords": [
     "framework",
@@ -29,8 +29,7 @@
     "node": ">=22"
   },
   "bin": {
-    "zusantara": "dist/cli.js",
-    "zentara": "dist/cli.js"
+    "zusantara": "dist/cli.js"
   },
   "main": "./dist/core/index.js",
   "types": "./dist/core/index.d.ts",

@@ -2681,11 +2681,11 @@ export const UI_CATALOG: CatalogEntry[] = [
     "name": "flash",
     "group": "feedback",
     "kind": "function",
-    "id": "Simpan pesan untuk ditampilkan satu kali di halaman berikutnya (biasanya tepat sebelum redirect). Tampilkan dengan `h(Toast, { flash: takeFlash(ctx) })` di halaman tujuan.",
-    "en": "Store a message to show once on the next page (usually right before a redirect). Show it with `h(Toast, { flash: takeFlash(ctx) })` on the target page.",
+    "id": "Simpan pesan untuk ditampilkan satu kali di halaman berikutnya (biasanya tepat sebelum redirect). Tampilkan dengan `h(Toast, { flash: takeFlash(ctx) })` di halaman tujuan. Argumen keempat menambah tombol di pesan, mis. { label: \"Urungkan\", action: \"/admin/produk/3/restore\" } setelah menghapus.",
+    "en": "Store a message to show once on the next page (usually right before a redirect). Show it with `h(Toast, { flash: takeFlash(ctx) })` on the target page. A fourth argument adds a button to the message, e.g. { label: \"Undo\", action: \"/admin/products/3/restore\" } after a delete.",
     "example": "flash(ctx, \"Produk tersimpan\"); return redirect(\"/produk\");",
     "props": [],
-    "signature": "flash(ctx: ZenContext, message: string, tone?: Flash[\"tone\"]): void"
+    "signature": "flash(ctx: ZenContext, message: string, tone?: Flash[\"tone\"], action?: Flash[\"action\"]): void"
   },
   {
     "name": "takeFlash",

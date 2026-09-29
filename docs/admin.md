@@ -2,7 +2,7 @@
 title: Panel admin
 order: 2
 group: Front-End
-description: Halaman kelola data dari schema database dengan satu perintah, lengkap dengan pencarian, filter, hak akses per role, htmx, dan tes.
+description: Halaman kelola data dari schema database dengan satu perintah, lengkap dengan pencarian, filter, hak akses per role, relasi, impor/ekspor, log audit, konten, alur kerja, htmx, dan tes.
 ---
 
 # Panel admin
@@ -143,6 +143,124 @@ export default defineResource({
   },
 });
 ```
+
+## Relasi
+
+### Many-to-many
+
+Tabel penghubung dengan dua foreign key (mis. `post_tags` dengan `post_id` dan `tag_id`) dikenali `make:admin`, yang menambahkan opsi `many` di file admin baru. Formulir mendapat kotak centang, dan daftar menampilkan labelnya sebagai tag.
+
+```ts
+export default defineResource({
+  ...generated,
+  table: posts,
+  db,
+  many: { tags: { through: postTags, label: "Tag" } },
+});
+```
+
+### Data anak di halaman induk
+
+Tabel lain di panel yang merujuk tabel ini tampil otomatis di halaman ubah induknya, mis. item pesanan di halaman pesanan. Tombol **Tambah** membuka formulir dengan induknya sudah terisi (`/admin/order-items/new?f_orderId=3`), dan **Lihat semua** membuka daftar yang sudah difilter. Matikan dengan `children: false`.
+
+## Data massal
+
+- **Aksi massal:** centang beberapa baris, pilih aksi (hapus, ubah enum atau boolean, aksi khusus, atau ekspor), lalu setujui di halaman konfirmasi yang menyebut jumlah dan daftar datanya. Setiap baris dicatat di log audit.
+- **Ekspor CSV:** menu **Aksi lain → Ekspor CSV** mengekspor semua data yang cocok dengan pencarian dan filter saat itu. File dibuka rapi di Excel (UTF-8 dengan BOM), dan sel yang diawali `=`, `+`, `-`, atau `@` diamankan dari formula injection.
+- **Impor CSV dan Excel (.xlsx):** unggah file, cocokkan kolom file dengan field (kolom bernama sama dipilih otomatis), lalu lihat pratinjau. Setiap baris diperiksa dengan aturan formulir; baris yang bermasalah ditandai per sel dan tidak disimpan. Kolom id yang terisi memperbarui data yang ada, kolom relasi boleh berisi id atau label (mis. nama kategori), angka seperti `Rp 12.000` dan tanggal `28/09/2026` dikenali. Paling banyak 5.000 baris sekali impor.
+- **Filter dengan kalimat:** ketik mis. *"dibuat bulan ini, harga di atas 100 ribu"* atau *"status dibayar, terbaru"*. Kalimat diubah menjadi filter biasa di URL dan tertulis cara memahaminya. Kata yang tidak dipahami dipakai sebagai pencarian teks. Aturannya berjalan di server tanpa provider AI.
+
+## Jejak data
+
+- **Log audit:** setiap tambah, ubah, hapus, pulihkan, impor, pindah status, dan aksi khusus dicatat dengan waktu, pengguna, dan kolom yang berubah (sebelum dan sesudah). Lihat semuanya di **Log audit** (`/admin/_log`) dan ringkasannya di dasbor.
+- **Riwayat revisi:** tombol **Riwayat** di halaman data menampilkan setiap perubahan dengan diff, dan **Kembalikan versi ini** memulihkan isi data ke versi mana pun.
+- **Hapus lunak:** tabel dengan kolom `deletedAt` (atau `deleted_at`) yang boleh kosong tidak menghapus datanya, tetapi memindahkannya ke **Tempat sampah**. Dari sana data bisa dipulihkan atau dihapus permanen.
+- **Urungkan:** setelah menghapus, pesan di pojok layar punya tombol **Urungkan**. Untuk tabel tanpa hapus lunak, datanya dibuat lagi dari salinan di log audit.
+
+Log, catatan, dan pengaturan disimpan di tabel `zusantara_admin_log`, `zusantara_admin_notes`, dan `zusantara_settings` di database aplikasi. Tabel itu dibuat otomatis saat pertama dipakai, jadi tidak ada di `schema.ts` dan tidak perlu migrasi. Matikan log dengan `audit: false` di `defineAdmin` atau per tabel. Kolom rahasia tidak pernah masuk riwayat yang ditampilkan.
+
+## Konten
+
+- **Draf, terbit, dan terjadwal:** tabel dengan kolom enum `status` yang punya nilai `published` (atau `terbit`/`live`) dan kolom `publishedAt` dikenali sebagai konten. Waktu terbit diisi otomatis saat pertama terbit, dan waktu di masa depan membuat data tampil sebagai **Terjadwal**. `previewUrl: (row) => ...` menambah tombol **Pratinjau**.
+- **Slug otomatis:** kolom `slug` yang dikosongkan dibuat dari judul (`Kopi Susu` menjadi `kopi-susu`, lalu `kopi-susu-2` bila sudah dipakai).
+- **SEO:** kolom yang diawali `meta`, `seo`, atau `og` (mis. `metaTitle`, `metaDescription`, `ogImage`) dikelompokkan di bagian **Mesin pencari (SEO)** dengan saran panjang teks.
+- **Dua bahasa:** kolom `<field>En` atau `<field>_en` (mis. `titleEn`) tampil bersebelahan dengan kolom aslinya.
+- **Pustaka media** (`/admin/_media`): unggah, lihat, salin URL, dan hapus file di `public/uploads`.
+- **Halaman pengaturan** (`/admin/_settings`): nama situs, kontak, jam buka, dan isian lain yang Anda tentukan. Aplikasi membacanya dengan `await admin.settings()`.
+
+```ts
+export const admin = defineAdmin({
+  resources,
+  settings: {
+    fields: [
+      { name: "siteName", label: "Nama situs", default: "Toko Kopi" },
+      { name: "contactEmail", label: "Email kontak", type: "email" },
+      { name: "openingHours", label: "Jam buka", type: "textarea" },
+    ],
+  },
+});
+```
+
+## Alur kerja
+
+```ts
+export default defineResource({
+  ...generated,
+  table: posts,
+  db,
+  // Status hanya berubah lewat tombol; "Setujui" hanya untuk editor dan admin.
+  workflow: {
+    field: "status",
+    transitions: [
+      { from: "draft", to: "review", label: "Ajukan" },
+      { from: "review", to: "published", label: "Setujui", roles: ["editor", "admin"] },
+      { from: ["review", "published"], to: "draft", label: "Kembalikan ke draf" },
+    ],
+  },
+  // Tombol di halaman data dan di aksi massal.
+  actions: [
+    { name: "invoice", label: "Kirim ulang invoice", job: "send-invoice" },
+    { name: "feature", label: "Jadikan unggulan", run: async (rows) => { /* ... */ }, confirm: "Jadikan unggulan?" },
+  ],
+});
+```
+
+- **Transisi dan persetujuan:** tombol pindah status hanya muncul untuk role yang boleh, dan setiap pindah status dicatat.
+- **Aksi khusus:** `run` untuk kode sendiri (boleh mengembalikan pesan), atau `job` untuk memasukkan [job](jobs.html) ke antrean dengan data `{ resource, ids }`.
+- **Catatan internal:** kolom catatan di halaman data, hanya terlihat di panel admin.
+- **Cetak dan PDF:** tombol **Cetak / PDF** membuka halaman rapi untuk dicetak atau disimpan sebagai PDF dari browser.
+
+## Otomasi
+
+"Bila data dibuat atau berubah, kirim email, panggil webhook, atau jalankan job." Otomasi berjalan setelah data tersimpan, dan kegagalannya dicatat di log aplikasi tanpa membatalkan penyimpanan. Minta saja ke Zusantara AI, mis. *"kirim email ke admin saat pesanan dibayar"*.
+
+```ts
+automations: [
+  {
+    on: "update",
+    when: (row, change) => row.status === "paid" && "status" in change.changes,
+    email: { to: "admin@toko.id", subject: "Pesanan {id} dibayar", text: "Total {total} dari {customerName}." },
+  },
+  { on: ["create", "update"], webhook: "https://hooks.example.com/pesanan" },
+  { on: "delete", job: "hapus-berkas" },
+],
+```
+
+## Pencarian global
+
+Kotak cari di atas panel (**Ctrl+K** atau **⌘K**) mencari di semua tabel yang boleh Anda lihat, dengan lima hasil teratas per tabel.
+
+## Ubah schema dari panel
+
+Saat pengembangan, admin bisa membuka `/admin/_schema` untuk membuat tabel atau menambah kolom lewat formulir. Pratinjau menampilkan kode yang akan ditambahkan ke `schema.ts` dan perintah yang dijalankan; setelah disetujui, Zusantara mengubah schema, membuat dan menjalankan migrasi, lalu memperbarui panel admin. Halaman ini tidak ada di produksi. Perintah yang sama tersedia di CLI dan dipakai Zusantara AI:
+
+```bash
+npx zusantara make:table products name:text:required price:integer:default=0 status:enum(draft,published):default=draft
+npx zusantara make:column products stock:integer:default=0
+npx zusantara make:table products name:text --dry-run   # lihat kodenya saja
+```
+
+Setiap kolom ditulis `nama:tipe[:required][:unique][:default=nilai]`. Tipe: `text`, `longtext`, `integer`, `number`, `boolean`, `date`, `datetime`, `json`, `enum(a,b)`, dan `relation(tabel)`.
 
 ## Tampilan
 

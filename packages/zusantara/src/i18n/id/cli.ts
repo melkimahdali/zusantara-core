@@ -37,6 +37,9 @@ Perintah manual:
   zusantara make:job <nama> [--schedule "<cron>"]  Buat file job baru, mis. kirim-laporan
   zusantara make:admin <tabel...> | --all          Panel admin dari schema database (/admin); aman dijalankan
                                                    ulang setelah schema berubah
+  zusantara make:table <nama> <kolom...>           Tabel baru: schema, migrasi, dan halaman admin sekaligus,
+                                                   mis. make:table products name:text:required price:integer
+  zusantara make:column <tabel> <kolom>            Tambah kolom: schema, migrasi, dan halaman admin
   zusantara describe [--json]                      Manifest aplikasi: route, tabel, admin, job, plugin
   zusantara view <path> [--mobile|--tablet] [--dark] [--lang en] [--screenshot] [--text "a,b"]
                                                    Lihat halaman, periksa tampilan, dan beri skor (browser bila ada tab)
@@ -109,7 +112,7 @@ Urutan: ZUSANTARA_AI_ORDER=openai,claude,ollama (provider lain menyusul). Cek: n
     nothing: "Tidak ada yang perlu diubah: proyek ini sudah memakai nama Zusantara.",
     done: (n: number) => `✓ ${n} perubahan. Jalankan \`npm install\` untuk memasang paket zusantara, lalu \`npm run dev\`.`,
   },
-  legacyMoved: (what: string) => `Zentara kini bernama Zusantara: data lokal dipindah (${what}).`,
+  legacyHint: "Proyek ini masih memakai nama lama Zentara, yang tidak lagi dibaca sejak 0.13.1. Jalankan `npx zusantara migrate:zusantara`, lalu `npm install`.",
   devtoolsOff: (reason: string) => `Chat Zusantara AI di browser tidak aktif: ${reason}`,
   noTypescript: "TypeScript belum dipasang di proyek ini. Jalankan: npm install -D typescript",
   buildDone: "✓ Build selesai. Jalankan dengan: zusantara start",

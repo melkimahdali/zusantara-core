@@ -32,6 +32,7 @@ Zusantara adalah framework web umum, bukan framework untuk jenis aplikasi terten
 | 12d | 0.12.8 | Halaman publik dan pola siap pakai: Hero, Pricing, Gallery, FAQ, Testimonial, ProductCard, keranjang, dan contoh halaman utuh |
 | 12e | 0.12.9 | Alat pengembang: toolbar per request (query, N+1), mode inspeksi, skor halaman, varian tablet/gelap/en, tangkapan layar, rekaman langkah, input suara |
 | 13 | 0.13 | Fondasi [panel admin](admin.html) dengan [htmx](https://htmx.org): CRUD dari schema yang bisa dibuat ulang, urutkan/cari/filter, hak akses, dasbor admin, dan `zusantara describe --json` |
+| 13b | 0.13.1 | Relasi, konten, dan alur kerja di panel admin: many-to-many, data anak, impor/ekspor CSV dan Excel, log audit, revisi, tempat sampah, draf dan terbit, SEO, media, pengaturan, persetujuan, otomasi, filter dengan kalimat, cari global, dan `make:table`/`make:column` |
 
 Tahap 10 dan 11 dirilis bersama di 0.12. Nama Zentara berganti menjadi Zusantara dan lisensinya menjadi MIT di 0.12.10.
 
@@ -39,7 +40,6 @@ Tahap 10 dan 11 dirilis bersama di 0.12. Nama Zentara berganti menjadi Zusantara
 
 | Tahap | Versi | Isi |
 |---|---|---|
-| 13b | 0.13.1 | Relasi, konten, dan alur kerja: many-to-many, CSV/Excel, log audit, revisi, draf dan terbit, SEO, media, persetujuan, otomasi, pengubah schema |
 | 13c | 0.13.2 | Tampilan kalender/kanban/spreadsheet, tampilan tersimpan, hak akses per kolom dan baris, kelola pengguna, multi-tenant, API dan webhook, UU PDP |
 | 13d | 0.13.3 | Template konten dan bisnis: Website Bisnis, Portofolio, Blog, Berita, Pemerintah, Penyedia Layanan, Statis, Publik |
 | 13e | 0.13.4 | Template aplikasi dan transaksi: Toko Online, E-Learning, Berbagi Berkas, Mesin Pencari, Dinamis |
@@ -153,7 +153,7 @@ Dibandingkan dengan Django Admin, Laravel Filament/Nova, Rails Avo, Airtable/Noc
 - Satu permintaan AI dikerjakan utuh, mis. "tambah kolom status ke produk": schema, migrasi, admin, tes, lalu dicek dengan `view_page`.
 - `zusantara describe --json` mencetak manifest aplikasi (route, tabel dan kolom, halaman admin, job, plugin) tanpa kolom rahasia. Manifest ini dipakai Zusantara AI sebagai konteks awal dan menjadi tool utama `zusantara mcp`.
 
-#### Tahap 13b · 0.13.1: relasi, konten, dan alur kerja
+#### Tahap 13b · 0.13.1: relasi, konten, dan alur kerja (selesai)
 
 - **Relasi:** many-to-many (pilihan ganda) dan data anak langsung di halaman induk, mis. item pesanan di halaman pesanan.
 - **Data massal:** aksi massal, ekspor dan impor CSV, dan impor Excel dengan pencocokan kolom.

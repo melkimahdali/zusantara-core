@@ -2,6 +2,24 @@
 
 English release notes start at 0.12.0. Earlier versions are described in Indonesian in [CHANGELOG.md](https://github.com/melkimahdali/zusantara-core/blob/main/CHANGELOG.md). `zusantara` and `create-zusantara` (before 0.12.10: `zentara` and `create-zentara`) always share the same version.
 
+## [0.13.1]
+
+### Added
+- **Relations in the admin panel:** many-to-many through a join table (`many: { tags: { through: postTags } }`, detected by `make:admin`) with checkboxes in the form and tags in the list, and child records on the parent page (e.g. order items on the order page) with an add button that fills in the parent. [Documentation](https://zusantara.morixa.id/en/admin.html#relations).
+- **Bulk data:** bulk actions with a count confirmation, CSV export that follows the filters, and CSV/Excel (.xlsx) import with column matching and a per-row preview before saving. The Excel reader has no outside dependencies.
+- **Data history:** an audit log (who changed what, before and after) at `/admin/_log` and on the dashboard, per-record revision history with a diff and a restore button, soft delete with a trash, and an **Undo** button after a delete (also for tables without soft delete, from the copy in the log).
+- **Content:** draft, published, and scheduled status with an automatic publish time and a preview button (`previewUrl`), unique automatic slugs, an SEO group for `meta*`/`seo*`/`og*` columns, two-language columns (`titleEn` beside `title`), a media library, and a site settings page read with `await admin.settings()`.
+- **Workflows:** status transitions with per-role approvals (`workflow`), record and bulk custom actions that run code or a job (`actions`), internal notes per record, and a print/PDF page.
+- **Automations** (`automations`): send an email, call a webhook, or run a job when a record is created, updated, or deleted, with a `when` condition.
+- **Filter with a sentence** in Indonesian or English, e.g. "created this month, price above 100k", turned into normal filters in the URL.
+- **Global search** across every admin table with **Ctrl+K**.
+- **Change the schema without writing code:** `zusantara make:table` and `make:column` edit `schema.ts`, create and run the migration, and refresh the admin panel in one command. The `/admin/_schema` page (development only) does the same through a form with a preview and approval, and Zusantara AI uses it through the `zusantara` tool.
+- `flash()` accepts a button (fourth argument), and `Toast` shows it. `testAdmin()` can send several values per field and files (multipart).
+- `api` template: a site settings page at `/admin/_settings`.
+
+### Removed
+- Support for the old Zentara name: the `zentara` command, `zentara.config.*`, `ZENTARA_*` variables, `/_zentara/*` URLs, and the automatic `.zentara` folder move. The CLI shows a hint when a project still uses the old name; `zusantara migrate:zusantara` is still available, and the `zentara_jobs` queue table is still moved automatically.
+
 ## [0.13.0]
 
 ### Added

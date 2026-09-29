@@ -31,6 +31,8 @@ npm install -g zusantara
 | `zusantara make:middleware <nama>` | buat file middleware |
 | `zusantara make:job <nama> [--schedule "0 7 * * *"]` | buat file [job](jobs.html), opsional dengan jadwal cron |
 | `zusantara make:admin <tabel...> [--all] [--force]` | buat atau perbarui [panel admin](admin.html) dari schema database, lengkap dengan tes |
+| `zusantara make:table <nama> <kolom...> [--dry-run]` | buat tabel baru: schema, migrasi, dan [panel admin](admin.html#ubah-schema-dari-panel) sekaligus |
+| `zusantara make:column <tabel> <kolom> [--dry-run]` | tambah kolom: schema, migrasi, dan panel admin |
 | `zusantara describe [--json]` | manifest aplikasi: route, tabel dan kolom (tanpa kolom rahasia), panel admin, job, plugin, dan saran index |
 | `zusantara jobs [--json]` | daftar job, jadwal, jalan berikutnya, dan isi antrean |
 | `zusantara jobs:run <nama> [--data <json>]` | jalankan satu job sekarang, tanpa antrean |
@@ -94,4 +96,4 @@ npm install
 
 Perintah ini mengganti import `zentara` dan `zentara/...` menjadi `zusantara/...`, dependensi dan script di `package.json`, `zentara.config.mjs` menjadi `zusantara.config.mjs`, variabel `ZENTARA_*` di `.env`, dan folder `.zentara/` menjadi `.zusantara/`. Zusantara AI juga bisa menjalankannya (dengan persetujuan Anda).
 
-Selama 0.12.x nama lama masih diterima: perintah `zentara`, `zentara.config.mjs`, variabel `ZENTARA_*`, dan URL `/_zentara/*`. Dukungan ini dihapus di 0.13.
+Sampai 0.13.0 nama lama masih diterima: perintah `zentara`, `zentara.config.mjs`, variabel `ZENTARA_*`, dan URL `/_zentara/*`. Sejak 0.13.1 nama lama tidak lagi dibaca, dan CLI menampilkan petunjuk untuk menjalankan `migrate:zusantara` bila masih menemukan jejaknya. Antrean job lama (`zentara_jobs`) tetap dipindah otomatis agar tidak ada job yang hilang.

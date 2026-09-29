@@ -9,49 +9,41 @@ import { agentTools } from "../src/ai/tools.js";
 import { SqliteJobStore } from "../src/backend/jobs.js";
 import { run } from "../src/cli.js";
 import { loadConfigFile } from "../src/core/config.js";
-import { applyLegacyEnv, migrateLegacyDirs, migrateProject, modernInternalPath } from "../src/core/legacy.js";
+import { hasLegacyTraces, migrateProject } from "../src/core/legacy.js";
 import { startServer } from "./helpers.js";
 
 function tmp(prefix: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), `zusantara-${prefix}-`));
 }
 
-describe("nama lama Zentara (kompatibilitas satu versi)", () => {
-  it("ZENTARA_* dibaca sebagai ZUSANTARA_*, nama baru tetap menang", () => {
-    const env: NodeJS.ProcessEnv = { ZENTARA_LANG: "en", ZENTARA_DEBUG: "1", ZUSANTARA_DEBUG: "0", OTHER: "x" };
-    assert.deepEqual(applyLegacyEnv(env), ["ZENTARA_LANG"]);
-    assert.equal(env.ZUSANTARA_LANG, "en");
-    assert.equal(env.ZUSANTARA_DEBUG, "0");
-    assert.equal(env.OTHER, "x");
-  });
-
-  it("path internal /_zentara dipetakan ke /_zusantara", () => {
-    assert.equal(modernInternalPath("/_zentara/ui.css"), "/_zusantara/ui.css");
-    assert.equal(modernInternalPath("/_zentara"), "/_zusantara");
-    assert.equal(modernInternalPath("/_zentaraku"), "/_zentaraku");
-    assert.equal(modernInternalPath("/produk"), "/produk");
-  });
-
-  it("zentara.config.mjs lama tetap dimuat bila belum ada zusantara.config.*", async () => {
+describe("nama lama Zentara (tidak lagi dibaca sejak 0.13.1)", () => {
+  it("ZENTARA_*, zentara.config.*, dan /_zentara tidak lagi dipakai", async () => {
     const dir = tmp("config");
     fs.writeFileSync(path.join(dir, "zentara.config.mjs"), "export default { appName: 'Lama' };\n");
-    assert.equal((await loadConfigFile(dir)).appName, "Lama");
-    fs.writeFileSync(path.join(dir, "zusantara.config.mjs"), "export default { appName: 'Baru' };\n");
-    assert.equal((await loadConfigFile(dir)).appName, "Baru");
+    assert.equal((await loadConfigFile(dir)).appName, undefined);
+    assert.ok(hasLegacyTraces(dir, {}));
+    assert.ok(hasLegacyTraces(tmp("env"), { ZENTARA_LANG: "en" }));
+    assert.equal(hasLegacyTraces(tmp("bersih"), {}), false);
   });
 
-  it("folder .zentara proyek dan home dipindah, .gitignore ikut diperbarui", () => {
+  it("CLI memberi petunjuk migrate:zusantara bila masih ada jejak nama lama", async () => {
+    const cwd = tmp("hint");
+    fs.mkdirSync(path.join(cwd, ".zentara"));
+    const err: string[] = [];
+    await run(["--version"], { cwd, out: () => {}, err: (l) => err.push(l), interactive: false });
+    assert.ok(err.some((l) => l.includes("migrate:zusantara")), err.join("\n"));
+    assert.ok(fs.existsSync(path.join(cwd, ".zentara")), "folder tidak dipindah diam-diam");
+  });
+
+  it("migrate:zusantara memindah folder .zentara dan memperbarui .gitignore", () => {
     const cwd = tmp("proj");
-    const home = tmp("home");
     fs.mkdirSync(path.join(cwd, ".zentara", "sessions"), { recursive: true });
     fs.writeFileSync(path.join(cwd, ".zentara", "sessions", "a.json"), "{}");
     fs.writeFileSync(path.join(cwd, ".gitignore"), "node_modules\n.zentara/\n");
-    fs.mkdirSync(path.join(home, ".zentara"));
-    assert.equal(migrateLegacyDirs(cwd, {}, home).length, 2);
+    const changed = migrateProject(cwd, "0.13.1");
+    assert.ok(changed.some((c) => c.includes(".zusantara")), changed.join(", "));
     assert.ok(fs.existsSync(path.join(cwd, ".zusantara", "sessions", "a.json")));
-    assert.ok(fs.existsSync(path.join(home, ".zusantara")));
     assert.match(fs.readFileSync(path.join(cwd, ".gitignore"), "utf8"), /^\.zusantara\/$/m);
-    assert.deepEqual(migrateLegacyDirs(cwd, {}, home), [], "kedua kalinya tidak ada yang dipindah");
   });
 
   it("migrate:zusantara mengubah import, package.json, config, dan .env", () => {
@@ -127,11 +119,9 @@ describe("nama lama Zentara (kompatibilitas satu versi)", () => {
     before(async () => ({ base, close } = await startServer()));
     after(() => close());
 
-    it("aset bawaan tetap dilayani", async () => {
-      const css = await fetch(`${base}/_zentara/ui.css`);
-      assert.equal(css.status, 200);
-      assert.match(css.headers.get("content-type")!, /text\/css/);
-      assert.equal((await fetch(`${base}/_zentara/tidak-ada.css`)).status, 404);
+    it("tidak lagi dilayani (404)", async () => {
+      assert.equal((await fetch(`${base}/_zentara/ui.css`)).status, 404);
+      assert.equal((await fetch(`${base}/_zusantara/ui.css`)).status, 200);
     });
   });
 });

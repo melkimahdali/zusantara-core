@@ -2,7 +2,7 @@
 // build -> npm pack kedua paket -> periksa isi tarball -> create-zusantara dari tarball
 // -> npm install -> typecheck, test, build -> jalankan server produksi & dev lalu panggil API-nya
 // -> CLI global (npm install -g, tanpa drizzle-orm), tool Zusantara AI, dan alur interaktif buat proyek.
-import { execFileSync, spawn } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -221,6 +221,20 @@ try {
         const part = await fetch(`http://127.0.0.1:${prodPort}/admin/users?q=admin&f_role=`, { headers: { cookie, "hx-request": "true", "hx-target": "zu-admin-results" } });
         const partHtml = await part.text();
         check(part.status === 200 && !partHtml.includes("<html") && partHtml.includes('id="zu-admin-results"') && part.headers.get("hx-push-url") === "/admin/users?q=admin", "zusantara start: potongan htmx hasil cari dengan URL bersih");
+        // 0.13.1: ubah data tercatat di log audit dan riwayat, ekspor CSV, pengaturan situs, dan cari global.
+        const form = (data) => ({ method: "POST", redirect: "manual", headers: { cookie, "content-type": "application/x-www-form-urlencoded", origin: `http://127.0.0.1:${prodPort}` }, body: new URLSearchParams(data).toString() });
+        const created = await fetch(`http://127.0.0.1:${prodPort}/admin/notes`, form({ userId: "1", title: "Catatan e2e", body: "Isi" }));
+        check(created.status === 303, `zusantara start: tambah data lewat /admin/notes (${created.status})`);
+        const logPage = await (await fetch(`http://127.0.0.1:${prodPort}/admin/_log`, { headers: { cookie } })).text();
+        check(logPage.includes("Catatan e2e") || /\/admin\/notes\/\d+/.test(logPage), "zusantara start: /admin/_log mencatat siapa mengubah apa");
+        const csv = await fetch(`http://127.0.0.1:${prodPort}/admin/notes/_export`, { headers: { cookie } });
+        check(csv.status === 200 && /text\/csv/.test(csv.headers.get("content-type") ?? "") && (await csv.text()).includes("Catatan e2e"), "zusantara start: ekspor CSV /admin/notes/_export");
+        const saved = await fetch(`http://127.0.0.1:${prodPort}/admin/_settings`, form({ siteName: "Toko e2e", contactEmail: "halo@e2e.test", openingHours: "" }));
+        const settingsPage = await (await fetch(`http://127.0.0.1:${prodPort}/admin/_settings`, { headers: { cookie } })).text();
+        check(saved.status === 303 && settingsPage.includes("Toko e2e"), "zusantara start: pengaturan situs /admin/_settings tersimpan");
+        const found = await (await fetch(`http://127.0.0.1:${prodPort}/admin/_search?q=e2e`, { headers: { cookie } })).text();
+        check(found.includes("Catatan e2e") && found.includes('data-zu-hotkey="k"'), "zusantara start: cari global /admin/_search (Ctrl+K)");
+        check((await fetch(`http://127.0.0.1:${prodPort}/admin/_schema`, { headers: { cookie } })).status === 404, "zusantara start: pengubah schema tidak ada di produksi");
         const htmxJs = await fetch(`http://127.0.0.1:${prodPort}/_zusantara/htmx.js`);
         check(htmxJs.status === 200 && /javascript/.test(htmxJs.headers.get("content-type") ?? ""), "zusantara start: /_zusantara/htmx.js");
       }
@@ -442,10 +456,15 @@ try {
     check(global(["routes"]).includes("/e2e-trips"), "CLI global: routes membaca route & schema baru");
     check(global(["jobs"]).includes("welcome-email"), "CLI global: jobs");
 
+    // Tabel baru satu perintah: schema.ts, migrasi, dan halaman admin (0.13.1).
+    const madeTable = global(["make:table", "e2e_books", "title:text:required", "price:integer:default=0", "status:enum(draft,published):default=draft"]);
+    const schemaNow = fs.readFileSync(path.join(apiApp, "src", "app", "db", "schema.ts"), "utf8");
+    check(/export const e2eBooks = sqliteTable\("e2e_books"/.test(schemaNow) && fs.existsSync(path.join(apiApp, "src", "app", "admin", "e2e-books.ts")) && /\.sql/.test(madeTable), `CLI global: make:table e2e_books (schema, migrasi, admin)\n${madeTable.slice(-600)}`);
+
     console.log("\n=== Pindah dari Zentara (nama lama) ===");
     // Proyek yang dibuat sebelum ganti nama: import "zentara", script `zentara dev`, zentara.config.mjs, ZENTARA_* di .env.
     const oldBin = isWindows ? path.join(prefix, "zentara.cmd") : path.join(prefix, "bin", "zentara");
-    check(fs.existsSync(oldBin), "perintah lama `zentara` tetap terpasang sebagai alias");
+    check(!fs.existsSync(oldBin), "perintah lama `zentara` tidak lagi dipasang (sejak 0.13.1)");
     const oldApp = path.join(WORK, "app-lama");
     fs.cpSync(apiApp, oldApp, { recursive: true, filter: (f) => !path.relative(apiApp, f).split(path.sep).some((part) => ["node_modules", "dist", ".zusantara"].includes(part)) });
     const toOld = (text) => text.replace(/(["'])zusantara((?:\/[\w.-]+)*)\1/g, "$1zentara$2$1");
@@ -459,6 +478,8 @@ try {
     if (fs.existsSync(path.join(oldApp, "zusantara.config.mjs"))) fs.renameSync(path.join(oldApp, "zusantara.config.mjs"), path.join(oldApp, "zentara.config.mjs"));
     fs.appendFileSync(path.join(oldApp, ".env"), "\nZENTARA_JOBS=off\n");
     fs.mkdirSync(path.join(oldApp, ".zentara"), { recursive: true });
+    const hinted = spawnSync(process.execPath, [globalCli, "--version"], { cwd: oldApp, encoding: "utf8" });
+    check(/migrate:zusantara/.test(hinted.stderr ?? ""), "proyek nama lama: CLI memberi petunjuk migrate:zusantara");
     const migrated = sh(process.execPath, [globalCli, "migrate:zusantara"], oldApp);
     check(migrated.includes("package.json") && migrated.includes("npm install"), "migrate:zusantara melaporkan perubahan dan langkah berikutnya");
     const newPkg = JSON.parse(fs.readFileSync(path.join(oldApp, "package.json"), "utf8"));
@@ -483,6 +504,8 @@ try {
     check(/^(BERHASIL|OK): db:generate/.test(await tool("database", { action: "generate" })), "AI database generate lewat zusantara proyek");
     check(/^(BERHASIL|OK): db:migrate/.test(await tool("database", { action: "migrate" })), "AI database migrate lewat zusantara proyek");
     check(/welcome-email/.test(await tool("zusantara", { command: "jobs" })), "AI tool zusantara: jobs");
+    const madeColumn = await tool("zusantara", { command: "make:column", args: ["e2e_books", "stock:integer:default=0"] });
+    check(/^(BERHASIL|OK): zusantara make:column/.test(madeColumn) && /stock: integer\("stock"\)/.test(fs.readFileSync(path.join(apiApp, "src", "app", "db", "schema.ts"), "utf8")), `AI tool zusantara: make:column (schema, migrasi, admin)\n${madeColumn.slice(-600)}`);
 
     console.log("\n=== Alur interaktif: pertama kali dibuka & buat proyek ===");
     const home = path.join(WORK, "zusantara-home");

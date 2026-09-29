@@ -3,37 +3,24 @@ import os from "node:os";
 import path from "node:path";
 
 /**
- * Kompatibilitas nama lama "Zentara" (sebelum 0.12.10). Berlaku satu versi, lalu dihapus:
- * - variabel lingkungan ZENTARA_* dibaca sebagai ZUSANTARA_* (nama baru tetap didahulukan);
- * - file zentara.config.mjs / .js tetap dimuat bila zusantara.config.* belum ada;
- * - folder .zentara/ proyek dan ~/.zentara dipindah ke .zusantara/ saat CLI pertama jalan;
- * - URL /_zentara/* tetap dilayani sebagai /_zusantara/*;
- * - tabel antrean zentara_jobs diganti nama menjadi zusantara_jobs.
+ * Pindah dari nama lama "Zentara" (sebelum 0.12.10). Sejak 0.13.1 nama lama tidak lagi dibaca saat
+ * berjalan: `zusantara migrate:zusantara` memindahkan proyek sekali jalan, dan CLI memberi petunjuk
+ * bila masih menemukan jejak nama lama.
  */
 
-const OLD_ENV = "ZENTARA_";
-const NEW_ENV = "ZUSANTARA_";
+/** File config dengan nama lama. */
+const LEGACY_CONFIG_FILES = ["zentara.config.mjs", "zentara.config.js"];
 
-/** File config dengan nama lama, dicoba setelah nama baru. */
-export const LEGACY_CONFIG_FILES = ["zentara.config.mjs", "zentara.config.js"];
-
-/** Salin setiap ZENTARA_X yang belum punya ZUSANTARA_X. Mengembalikan nama variabel lama yang dipakai. */
-export function applyLegacyEnv(env: NodeJS.ProcessEnv = process.env): string[] {
-  const used: string[] = [];
-  for (const [key, value] of Object.entries(env)) {
-    if (!key.startsWith(OLD_ENV) || value === undefined) continue;
-    const next = NEW_ENV + key.slice(OLD_ENV.length);
-    if (env[next] === undefined) {
-      env[next] = value;
-      used.push(key);
-    }
+/** Proyek masih memakai nama lama (config, folder data, dependensi, atau variabel env ZENTARA_*). */
+export function hasLegacyTraces(cwd: string, env: NodeJS.ProcessEnv = process.env): boolean {
+  if (LEGACY_CONFIG_FILES.some((f) => fs.existsSync(path.join(cwd, f))) || fs.existsSync(path.join(cwd, ".zentara"))) return true;
+  if (Object.keys(env).some((k) => k.startsWith("ZENTARA_"))) return true;
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.join(cwd, "package.json"), "utf8")) as Record<string, Record<string, string> | undefined>;
+    return ["dependencies", "devDependencies"].some((f) => pkg[f]?.zentara !== undefined);
+  } catch {
+    return false;
   }
-  return used;
-}
-
-/** Ubah path internal lama /_zentara ke /_zusantara (selain itu dikembalikan apa adanya). */
-export function modernInternalPath(pathname: string): string {
-  return pathname === "/_zentara" || pathname.startsWith("/_zentara/") ? "/_zusantara" + pathname.slice("/_zentara".length) : pathname;
 }
 
 function moveDir(from: string, to: string): boolean {
@@ -63,7 +50,7 @@ function updateGitignore(cwd: string): void {
  * Pindahkan data lokal bernama lama: `.zentara/` di proyek dan `~/.zentara` (bila ZUSANTARA_HOME tidak diatur).
  * Mengembalikan daftar folder yang dipindah, untuk pemberitahuan di CLI.
  */
-export function migrateLegacyDirs(cwd: string, env: NodeJS.ProcessEnv = process.env, home = os.homedir()): string[] {
+function migrateLegacyDirs(cwd: string, env: NodeJS.ProcessEnv = process.env, home = os.homedir()): string[] {
   const moved: string[] = [];
   if (moveDir(path.join(cwd, ".zentara"), path.join(cwd, ".zusantara"))) {
     updateGitignore(cwd);

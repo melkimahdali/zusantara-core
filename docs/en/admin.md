@@ -2,7 +2,7 @@
 title: Admin panel
 order: 2
 group: Front-End
-description: Data management pages from your database schema in one command, with search, filters, per-role access, htmx, and tests.
+description: Data management pages from your database schema in one command, with search, filters, per-role access, relations, import/export, an audit log, content, workflows, htmx, and tests.
 ---
 
 # Admin panel
@@ -143,6 +143,124 @@ export default defineResource({
   },
 });
 ```
+
+## Relations
+
+### Many-to-many
+
+A join table with two foreign keys (e.g. `post_tags` with `post_id` and `tag_id`) is recognized by `make:admin`, which adds a `many` option to the new admin file. The form gets checkboxes, and the list shows the labels as tags.
+
+```ts
+export default defineResource({
+  ...generated,
+  table: posts,
+  db,
+  many: { tags: { through: postTags, label: "Tags" } },
+});
+```
+
+### Child records on the parent page
+
+Other tables in the panel that reference this table show up on the parent's edit page automatically, e.g. order items on the order page. **Add** opens a form with the parent already filled in (`/admin/order-items/new?f_orderId=3`), and **View all** opens the filtered list. Turn it off with `children: false`.
+
+## Bulk data
+
+- **Bulk actions:** tick several rows, pick an action (delete, set an enum or boolean, a custom action, or export), then approve it on a confirmation page that shows the count and the records. Every row is recorded in the audit log.
+- **CSV export:** **More actions → Export CSV** exports every record that matches the current search and filters. The file opens cleanly in Excel (UTF-8 with a BOM), and cells starting with `=`, `+`, `-`, or `@` are protected from formula injection.
+- **CSV and Excel (.xlsx) import:** upload a file, match the file's columns to the fields (columns with the same name are picked for you), and review the preview. Every row is checked with the form's rules; rows with problems are marked per cell and not saved. A filled-in id column updates the existing record, relation columns may hold the id or the label (e.g. the category name), and numbers like `Rp 12.000` and dates like `28/09/2026` are understood. Up to 5,000 rows per import.
+- **Filter with a sentence:** type e.g. *"created this month, price above 100k"* or *"status paid, newest"*. The sentence becomes normal filters in the URL, and the panel says how it understood it. Words it does not understand are used as a text search. The rules run on the server without an AI provider.
+
+## Data history
+
+- **Audit log:** every create, update, delete, restore, import, status change, and custom action is recorded with the time, the user, and the fields that changed (before and after). See everything under **Audit log** (`/admin/_log`) and a summary on the dashboard.
+- **Revision history:** **History** on a record shows every change with a diff, and **Restore this version** brings the record back to any version.
+- **Soft delete:** tables with a nullable `deletedAt` (or `deleted_at`) column do not delete records; they move them to the **Trash**, where they can be restored or deleted permanently.
+- **Undo:** after a delete, the message in the corner has an **Undo** button. For tables without soft delete, the record is recreated from the copy in the audit log.
+
+The log, notes, and settings live in the `zusantara_admin_log`, `zusantara_admin_notes`, and `zusantara_settings` tables in the app database. They are created automatically on first use, so they are not in `schema.ts` and need no migration. Turn the log off with `audit: false` in `defineAdmin` or per table. Secret columns never appear in the history that is shown.
+
+## Content
+
+- **Draft, published, and scheduled:** a table with a `status` enum that includes `published` (or `terbit`/`live`) and a `publishedAt` column is treated as content. The publish time is set automatically the first time it is published, and a time in the future shows the record as **Scheduled**. `previewUrl: (row) => ...` adds a **Preview** button.
+- **Automatic slug:** an empty `slug` column is made from the title (`Kopi Susu` becomes `kopi-susu`, then `kopi-susu-2` if it is taken).
+- **SEO:** columns starting with `meta`, `seo`, or `og` (e.g. `metaTitle`, `metaDescription`, `ogImage`) are grouped under **Search engines (SEO)** with length hints.
+- **Two languages:** a `<field>En` or `<field>_en` column (e.g. `titleEn`) is shown beside the original field.
+- **Media library** (`/admin/_media`): upload, view, copy the URL of, and delete files in `public/uploads`.
+- **Settings page** (`/admin/_settings`): site name, contact details, opening hours, and any other fields you define. The app reads them with `await admin.settings()`.
+
+```ts
+export const admin = defineAdmin({
+  resources,
+  settings: {
+    fields: [
+      { name: "siteName", label: "Site name", default: "Coffee Shop" },
+      { name: "contactEmail", label: "Contact email", type: "email" },
+      { name: "openingHours", label: "Opening hours", type: "textarea" },
+    ],
+  },
+});
+```
+
+## Workflows
+
+```ts
+export default defineResource({
+  ...generated,
+  table: posts,
+  db,
+  // The status only changes through buttons; "Approve" is for editors and admins only.
+  workflow: {
+    field: "status",
+    transitions: [
+      { from: "draft", to: "review", label: "Submit" },
+      { from: "review", to: "published", label: "Approve", roles: ["editor", "admin"] },
+      { from: ["review", "published"], to: "draft", label: "Back to draft" },
+    ],
+  },
+  // Buttons on the record page and in bulk actions.
+  actions: [
+    { name: "invoice", label: "Resend invoice", job: "send-invoice" },
+    { name: "feature", label: "Feature it", run: async (rows) => { /* ... */ }, confirm: "Feature these?" },
+  ],
+});
+```
+
+- **Transitions and approvals:** status buttons only appear for roles that may use them, and every status change is recorded.
+- **Custom actions:** `run` for your own code (it may return a message), or `job` to queue a [job](jobs.html) with the data `{ resource, ids }`.
+- **Internal notes:** a notes box on the record page, only visible in the admin panel.
+- **Print and PDF:** **Print / PDF** opens a clean page to print or save as PDF from the browser.
+
+## Automations
+
+"When a record is created or changes, send an email, call a webhook, or run a job." Automations run after the record is saved, and a failure is written to the app log without undoing the save. You can simply ask Zusantara AI, e.g. *"email the admin when an order is paid"*.
+
+```ts
+automations: [
+  {
+    on: "update",
+    when: (row, change) => row.status === "paid" && "status" in change.changes,
+    email: { to: "admin@shop.com", subject: "Order {id} paid", text: "Total {total} from {customerName}." },
+  },
+  { on: ["create", "update"], webhook: "https://hooks.example.com/orders" },
+  { on: "delete", job: "remove-files" },
+],
+```
+
+## Global search
+
+The search box at the top of the panel (**Ctrl+K** or **⌘K**) searches every table you may view, with the top five results per table.
+
+## Editing the schema from the panel
+
+During development, admins can open `/admin/_schema` to create a table or add a column with a form. The preview shows the code that will be added to `schema.ts` and the commands that will run; once approved, Zusantara changes the schema, creates and runs the migration, and refreshes the admin panel. The page does not exist in production. The same commands are available in the CLI and used by Zusantara AI:
+
+```bash
+npx zusantara make:table products name:text:required price:integer:default=0 status:enum(draft,published):default=draft
+npx zusantara make:column products stock:integer:default=0
+npx zusantara make:table products name:text --dry-run   # show the code only
+```
+
+Each column is written `name:type[:required][:unique][:default=value]`. Types: `text`, `longtext`, `integer`, `number`, `boolean`, `date`, `datetime`, `json`, `enum(a,b)`, and `relation(table)`.
 
 ## Look
 

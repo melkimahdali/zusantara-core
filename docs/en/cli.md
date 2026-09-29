@@ -31,6 +31,8 @@ npm install -g zusantara
 | `zusantara make:middleware <name>` | create a middleware file |
 | `zusantara make:job <name> [--schedule "0 7 * * *"]` | create a [job](jobs.html) file, optionally with a cron schedule |
 | `zusantara make:admin <table...> [--all] [--force]` | create or refresh the [admin panel](admin.html) from the database schema, with tests |
+| `zusantara make:table <name> <column...> [--dry-run]` | create a table: schema, migration, and [admin panel](admin.html#editing-the-schema-from-the-panel) in one go |
+| `zusantara make:column <table> <column> [--dry-run]` | add a column: schema, migration, and admin panel |
 | `zusantara describe [--json]` | app manifest: routes, tables and columns (no secret columns), admin panel, jobs, plugins, and index suggestions |
 | `zusantara jobs [--json]` | list jobs, schedules, next runs, and queue counts |
 | `zusantara jobs:run <name> [--data <json>]` | run one job now, without the queue |
@@ -94,4 +96,4 @@ npm install
 
 It rewrites `zentara` and `zentara/...` imports to `zusantara/...`, the dependencies and scripts in `package.json`, `zentara.config.mjs` to `zusantara.config.mjs`, `ZENTARA_*` variables in `.env`, and the `.zentara/` folder to `.zusantara/`. Zusantara AI can run it too (with your approval).
 
-Throughout 0.12.x the old names still work: the `zentara` command, `zentara.config.mjs`, `ZENTARA_*` variables, and `/_zentara/*` URLs. This support is removed in 0.13.
+Up to 0.13.0 the old names still work: the `zentara` command, `zentara.config.mjs`, `ZENTARA_*` variables, and `/_zentara/*` URLs. Since 0.13.1 the old names are no longer read, and the CLI shows a hint to run `migrate:zusantara` when it still finds them. The old job queue (`zentara_jobs`) is still moved automatically so no job is lost.

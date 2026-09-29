@@ -27,7 +27,7 @@ import { findLocalCli } from "./process.js";
 import { ProviderUnavailableError } from "./ai/types.js";
 import { defaultAppDir, loadConfigFile, resolveConfig, type UserConfig } from "./core/config.js";
 import { formatUiObject, writeConfigUi } from "./core/config-edit.js";
-import { applyLegacyEnv, LEGACY_CONFIG_FILES, migrateLegacyDirs, migrateProject } from "./core/legacy.js";
+import { hasLegacyTraces, migrateProject } from "./core/legacy.js";
 import { CATALOG_GROUPS, catalogDetail, catalogList, exampleList, findCatalogEntry, findExample, similarEntries, UI_CATALOG, UI_EXAMPLES } from "./ui/catalog.js";
 import { ACCENT_PRESETS, DEFAULT_THEME, resolveUiTheme, type UiTheme, type UiThemeConfig } from "./ui/theme.js";
 import type { DbCommandResult } from "./db/commands.js";
@@ -291,7 +291,7 @@ async function listRoutes(args: ParsedArgs, io: CliIO): Promise<number> {
 }
 
 const KNOWN_COMMANDS = new Set([
-  "help", "dev", "build", "start", "routes", "make:route", "make:middleware", "make:job", "make:admin", "describe", "ai", "ai:status", "ai:setup", "undo", "db:generate", "db:migrate", "db:seed", "lang", "jobs", "jobs:run", "view", "requests", "ai:log", "ui", "theme", "migrate:zusantara",
+  "help", "dev", "build", "start", "routes", "make:route", "make:middleware", "make:job", "make:admin", "make:table", "make:column", "describe", "ai", "ai:status", "ai:setup", "undo", "db:generate", "db:migrate", "db:seed", "lang", "jobs", "jobs:run", "view", "requests", "ai:log", "ui", "theme", "migrate:zusantara",
 ]);
 
 /** Bahasa CLI: env ZUSANTARA_LANG, lalu `locale` di zusantara.config.mjs, lalu preferensi global, lalu Indonesia. */
@@ -362,7 +362,6 @@ export function isNaturalLanguage(positional: readonly string[]): boolean {
 function loadDotEnv(cwd: string): void {
   const file = path.join(cwd, ".env");
   if (fs.existsSync(file)) process.loadEnvFile(file);
-  applyLegacyEnv();
 }
 
 async function loadAiConfig(io: CliIO, flags: ParsedArgs["flags"]) {
@@ -582,7 +581,7 @@ function serveEntry(): string {
 
 /** Argumen tsx watch: pantau juga seluruh folder aplikasi (file route baru) dan .env. */
 export function devWatchArgs(cwd: string, appDir: string, entry: string): string[] {
-  return ["watch", "--clear-screen=false", "--include", appDir, "--include", path.join(cwd, ".env"), "--include", path.join(cwd, "zusantara.config.mjs"), "--include", path.join(cwd, "zentara.config.mjs"), entry];
+  return ["watch", "--clear-screen=false", "--include", appDir, "--include", path.join(cwd, ".env"), "--include", path.join(cwd, "zusantara.config.mjs"), entry];
 }
 
 async function devServer(args: ParsedArgs, io: CliIO): Promise<number> {
@@ -837,7 +836,7 @@ async function themeCommand(args: ParsedArgs, io: CliIO): Promise<number> {
     io.err((err as Error).message);
     return 1;
   }
-  const file = ["zusantara.config.mjs", "zusantara.config.js", ...LEGACY_CONFIG_FILES].find((f) => fs.existsSync(path.join(io.cwd, f))) ?? "zusantara.config.mjs";
+  const file = ["zusantara.config.mjs", "zusantara.config.js"].find((f) => fs.existsSync(path.join(io.cwd, f))) ?? "zusantara.config.mjs";
   if (!reset && Object.keys(changes).length === 0) {
     if (args.flags.json) {
       io.out(JSON.stringify({ config: current, theme: resolved, accents: Object.keys(ACCENT_PRESETS) }, null, 2));
@@ -898,6 +897,49 @@ async function makeAdminCommand(args: ParsedArgs, io: CliIO): Promise<number> {
   }
 }
 
+/**
+ * `zusantara make:table <nama> <kolom...>` dan `make:column <tabel> <kolom>`: ubah schema.ts, lalu
+ * db:generate, db:migrate, dan make:admin untuk tabel itu. `--dry-run` hanya menampilkan kodenya.
+ */
+async function schemaCommand(command: "make:table" | "make:column", args: ParsedArgs, io: CliIO): Promise<number> {
+  const m = t().admin.schema;
+  const [, target, ...cols] = args.positional;
+  if (!target || !cols.length) {
+    io.err(command === "make:table" ? m.usageTable : m.usageColumn);
+    return 1;
+  }
+  let plan: import("./admin/schema-apply.js").SchemaPlan;
+  try {
+    const { parseColumnLines, planSchemaChange } = await import("./admin/schema-apply.js");
+    const columns = parseColumnLines(cols);
+    plan =
+      command === "make:table"
+        ? planSchemaChange(io.cwd, { kind: "table", table: { name: target, columns, timestamps: args.flags["no-timestamps"] !== true && args.flags.timestamps !== "false" } })
+        : planSchemaChange(io.cwd, { kind: "column", table: target, column: columns[0]! });
+  } catch (err) {
+    io.err((err as Error).message);
+    return 1;
+  }
+  if (args.flags["dry-run"]) {
+    io.out(m.dryRun);
+    for (const line of plan.added) io.out(`  ${line}`);
+    return 0;
+  }
+  const { writeSchemaPlan } = await import("./admin/schema-apply.js");
+  writeSchemaPlan(plan);
+  io.out(m.written(path.relative(io.cwd, plan.file).split(path.sep).join("/")));
+  for (const step of [["db:generate"], ["db:migrate"], ["make:admin", plan.exportName]]) {
+    io.out(m.step(step.join(" ")));
+    const code = await run(step, io);
+    if (code !== 0) {
+      io.err(m.stepFailed(step.join(" ")));
+      return code;
+    }
+  }
+  io.out(m.done(plan.exportName));
+  return 0;
+}
+
 /** `zusantara describe [--json]`: manifest aplikasi (route, tabel, admin, job, plugin) tanpa kolom rahasia. */
 async function describeCommand(args: ParsedArgs, io: CliIO): Promise<number> {
   try {
@@ -939,8 +981,7 @@ function version(): string {
 }
 
 export async function run(argv: readonly string[], io: CliIO): Promise<number> {
-  applyLegacyEnv();
-  for (const moved of migrateLegacyDirs(io.cwd)) io.err(t().cli.legacyMoved(moved));
+  if (hasLegacyTraces(io.cwd) && argv[0] !== "migrate:zusantara") io.err(t().cli.legacyHint);
   // Salinan env sebelum .env dimuat ke proses ini: dipakai untuk server dev yang dijalankan CLI.
   const serverEnv = { ...process.env };
   const args = parseArgs(argv);
@@ -1011,6 +1052,9 @@ export async function run(argv: readonly string[], io: CliIO): Promise<number> {
       loadDotEnv(io.cwd);
       return command === "describe" ? describeCommand(args, io) : makeAdminCommand(args, io);
     }
+    case "make:table":
+    case "make:column":
+      return schemaCommand(command, args, io);
     case "routes":
       return listRoutes(args, io);
     case "make:route":
